@@ -1,12 +1,12 @@
-# SMS Gateway para Android
+# SMStoSMS para Android
 
-Aplicación Android que convierte un dispositivo dedicado con SIM en un **gateway SMS corporativo**: recibe mensajes SMS entrantes y los reenvía automáticamente a una API REST via HTTPS.
+Aplicación Android que convierte un dispositivo dedicado con SIM en una **pasarela de SMS**: recibe mensajes SMS entrantes y los reenvía automáticamente a una API REST via HTTPS.
 
 ---
 
 ## Descargar
 
-[**Última versión →**](https://github.com/jbautistamartin/SMSGateway/releases/latest)
+[**Última versión →**](https://github.com/jbautistamartin/SMStoSMS/releases/latest)
 
 > **Instalar en Android:**
 > 1. Descarga el APK desde el enlace anterior
@@ -87,7 +87,7 @@ Consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para la documentación t
 
 # Build release (requiere claves en local.properties; ver CLAUDE.md)
 ./gradlew assembleRelease
-# APK → app/build/outputs/apk/release/smsgateway-<versionName>.apk
+# APK → app/build/outputs/apk/release/smstosms-<versionName>.apk
 ```
 
 ### 2. Instalar mediante ADB
@@ -99,7 +99,7 @@ Consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para la documentación t
 adb install app/build/outputs/apk/debug/app-debug.apk
 
 # Instalar APK release (sustituye <versionName> por la versión real, p. ej. 1.0.0)
-adb install app/build/outputs/apk/release/smsgateway-<versionName>.apk
+adb install app/build/outputs/apk/release/smstosms-<versionName>.apk
 
 # Si ya hay una versión instalada y quieres reemplazarla sin desinstalar (conserva datos)
 adb install -r app/build/outputs/apk/debug/app-debug.apk
@@ -114,23 +114,23 @@ Alternativamente, `./gradlew installDebug` compila e instala el debug en un solo
 
 ```bash
 # Conceder permisos por ADB (dispositivo dedicado)
-adb shell pm grant com.capicua.smsgateway android.permission.RECEIVE_SMS
-adb shell pm grant com.capicua.smsgateway android.permission.READ_SMS
-adb shell pm grant com.capicua.smsgateway android.permission.POST_NOTIFICATIONS
+adb shell pm grant com.capicua.smstosms android.permission.RECEIVE_SMS
+adb shell pm grant com.capicua.smstosms android.permission.READ_SMS
+adb shell pm grant com.capicua.smstosms android.permission.POST_NOTIFICATIONS
 
 # Excluir de optimización de batería (obligatorio para despacho fiable)
-adb shell dumpsys deviceidle whitelist +com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist +com.capicua.smstosms
 
 # Verificar que quedó en la lista
-adb shell dumpsys deviceidle whitelist   # debe aparecer com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist   # debe aparecer com.capicua.smstosms
 
 # Revertir (quitar de la lista si fuera necesario)
-adb shell dumpsys deviceidle whitelist -com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist -com.capicua.smstosms
 ```
 
 > **¿Por qué es obligatorio?** Android suspende WorkManager cuando la pantalla lleva varios minutos apagada (modo Doze). Sin esta exención el `SmsDispatchWorker` puede demorarse horas. Con ella, los SMS se reenvían en segundos independientemente del estado de la pantalla o la batería.
 >
-> Si no tienes cable USB, el mismo efecto se consigue desde el propio teléfono: **Ajustes → Aplicaciones → SMS Gateway → Batería → Sin restricciones** (la ruta exacta varía según fabricante; consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#device-setup) para instrucciones por modelo).
+> Si no tienes cable USB, el mismo efecto se consigue desde el propio teléfono: **Ajustes → Aplicaciones → SMStoSMS → Batería → Sin restricciones** (la ruta exacta varía según fabricante; consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#device-setup) para instrucciones por modelo).
 
 ---
 
@@ -182,7 +182,7 @@ https://api.empresa.com/notify?phone={telefono}&msg={mensaje}&ts={fecha}
 ## Estructura del proyecto
 
 ```
-app/src/main/java/com/capicua/smsgateway/
+app/src/main/java/com/capicua/smstosms/
 ├── data/
 │   ├── config/          # AppConfig, ConfigDataStore
 │   ├── local/db/        # Room: SmsEntity, LogEntity, SmsDao, LogDao, SmsDatabase
@@ -200,7 +200,7 @@ app/src/main/java/com/capicua/smsgateway/
 ├── service/             # SmsIngestionService
 ├── util/                # Constants, Extensions, NetworkMonitor
 ├── worker/              # SmsDispatchWorker, HealthMonitorWorker
-└── GatewayApplication.kt
+└── SmsToSmsApplication.kt
 docs/
 └── ARCHITECTURE.md      # Documentación técnica completa
 ```
@@ -209,7 +209,7 @@ docs/
 
 ## Base de datos
 
-El gateway usa SQLite vía Room con dos tablas:
+La aplicación usa SQLite vía Room con dos tablas:
 
 - **`sms`** — mensajes recibidos con estado de envío (`enviado`, `intentos`, `ultimoError`)
 - **`log_entries`** — registro de auditoría de todos los eventos del sistema

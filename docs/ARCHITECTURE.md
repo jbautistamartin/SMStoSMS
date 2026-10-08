@@ -1,4 +1,4 @@
-# SMS Gateway — Documentación Técnica
+# SMStoSMS — Documentación Técnica
 
 ## Índice
 
@@ -21,7 +21,7 @@
 
 ## 1. Descripción del sistema
 
-**SMS Gateway** es una aplicación Android diseñada para ejecutarse en un **dispositivo dedicado** (p. ej. un terminal Android industrial o un teléfono fijo con SIM) conectado a la red WiFi corporativa. Su función es recibir SMS enviados al número de la SIM y reenviarlos automáticamente a una API corporativa vía HTTPS.
+**SMStoSMS** es una aplicación Android diseñada para ejecutarse en un **dispositivo dedicado** (p. ej. un terminal Android industrial o un teléfono fijo con SIM) conectado a la red WiFi corporativa. Su función es recibir SMS enviados al número de la SIM y reenviarlos automáticamente a una API corporativa vía HTTPS.
 
 ### Casos de uso típicos
 
@@ -64,7 +64,7 @@ La aplicación sigue **Clean Architecture** con separación estricta en tres cap
 ├─────────────────────────────────────────────────────────┤
 │              ANDROID SYSTEM LAYER                       │
 │  SmsReceiver · SmsIngestionService · BootReceiver       │
-│  NetworkMonitor · GatewayApplication                    │
+│  NetworkMonitor · SmsToSmsApplication                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -241,8 +241,8 @@ No hay variables de entorno necesarias. La URL del servidor y el token se config
 
 | Variante | applicationId | Características |
 |----------|--------------|-----------------|
-| `debug` | `com.capicua.smsgateway.debug` | Logs Timber en consola, HTTP logging HEADERS, sin ProGuard |
-| `release` | `com.capicua.smsgateway` | ProGuard habilitado, HTTP logging deshabilitado |
+| `debug` | `com.capicua.smstosms.debug` | Logs Timber en consola, HTTP logging HEADERS, sin ProGuard |
+| `release` | `com.capicua.smstosms` | ProGuard habilitado, HTTP logging deshabilitado |
 
 ---
 
@@ -261,19 +261,19 @@ adb devices
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 # 4. Conceder permisos automáticamente (sin diálogo de usuario)
-adb shell pm grant com.capicua.smsgateway android.permission.RECEIVE_SMS
-adb shell pm grant com.capicua.smsgateway android.permission.READ_SMS
-adb shell pm grant com.capicua.smsgateway android.permission.POST_NOTIFICATIONS
+adb shell pm grant com.capicua.smstosms android.permission.RECEIVE_SMS
+adb shell pm grant com.capicua.smstosms android.permission.READ_SMS
+adb shell pm grant com.capicua.smstosms android.permission.POST_NOTIFICATIONS
 
 # 5. Eximir de Doze mode / optimización de batería (OBLIGATORIO)
-adb shell dumpsys deviceidle whitelist +com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist +com.capicua.smstosms
 
 # Verificar que la app está en la lista
 adb shell dumpsys deviceidle whitelist
-# Debe aparecer una línea con: com.capicua.smsgateway
+# Debe aparecer una línea con: com.capicua.smstosms
 
 # Para revertir (quitar de la lista):
-adb shell dumpsys deviceidle whitelist -com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist -com.capicua.smstosms
 ```
 
 ### Por qué es obligatorio el paso 5
@@ -294,12 +294,12 @@ Si no hay acceso a ADB, el mismo efecto se consigue desde la interfaz del teléf
 
 | Fabricante | Ruta |
 |-----------|------|
-| **Stock Android / Pixel** | Ajustes → Aplicaciones → SMS Gateway → Batería → **Sin restricciones** |
-| **Samsung (One UI)** | Ajustes → Mantenimiento del dispositivo → Batería → Límites de uso en segundo plano → Aplicaciones sin suspender → Añadir → SMS Gateway |
-| **Xiaomi / MIUI / HyperOS** | Ajustes → Aplicaciones → Administrar aplicaciones → SMS Gateway → Ahorro de batería → **Sin restricciones** + activar **Inicio automático** |
-| **Huawei / EMUI** | Ajustes → Aplicaciones → SMS Gateway → Consumo de batería → desactivar Gestión inteligente → **Sin restricciones** |
-| **OnePlus / OxygenOS** | Ajustes → Aplicaciones → SMS Gateway → Batería → Optimización de batería → **No optimizar** |
-| **Cualquier fabricante** | Buscar "Optimización de batería" en Ajustes → Todas las aplicaciones → SMS Gateway → **No optimizar** |
+| **Stock Android / Pixel** | Ajustes → Aplicaciones → SMStoSMS → Batería → **Sin restricciones** |
+| **Samsung (One UI)** | Ajustes → Mantenimiento del dispositivo → Batería → Límites de uso en segundo plano → Aplicaciones sin suspender → Añadir → SMStoSMS |
+| **Xiaomi / MIUI / HyperOS** | Ajustes → Aplicaciones → Administrar aplicaciones → SMStoSMS → Ahorro de batería → **Sin restricciones** + activar **Inicio automático** |
+| **Huawei / EMUI** | Ajustes → Aplicaciones → SMStoSMS → Consumo de batería → desactivar Gestión inteligente → **Sin restricciones** |
+| **OnePlus / OxygenOS** | Ajustes → Aplicaciones → SMStoSMS → Batería → Optimización de batería → **No optimizar** |
+| **Cualquier fabricante** | Buscar "Optimización de batería" en Ajustes → Todas las aplicaciones → SMStoSMS → **No optimizar** |
 
 ### Instalación vía MDM (producción)
 
@@ -311,7 +311,7 @@ Para despliegue masivo en flotas de dispositivos, se recomienda:
    ```xml
    <!-- Ejemplo Android Management API -->
    <permissionGrants>
-     <packageName>com.capicua.smsgateway</packageName>
+     <packageName>com.capicua.smstosms</packageName>
      <permissions>RECEIVE_SMS READ_SMS POST_NOTIFICATIONS</permissions>
      <policy>GRANT</policy>
    </permissionGrants>
@@ -406,7 +406,7 @@ Para añadir una CA corporativa de confianza, editar `res/xml/network_security_c
 Dispositivo remoto
     │ SMS vía red GSM/LTE
     ▼
-SIM del dispositivo gateway
+SIM del dispositivo dedicado
     │ Radio → Sistema Android (SMS_RECEIVED broadcast)
     ▼
 SmsReceiver.onReceive()                          [hilo principal]
@@ -590,11 +590,11 @@ En la pantalla "Logs" → botón **Exportar**. Genera un archivo `.txt` en la ca
 adb logcat -s "SmsReceiver" "SmsIngestionService" "SmsDispatchWorker" "HealthMonitorWorker"
 
 # Ver base de datos SQLite
-adb shell run-as com.capicua.smsgateway
-cat databases/sms_gateway.db | sqlite3 :memory: ".tables"
+adb shell run-as com.capicua.smstosms
+cat databases/smstosms.db | sqlite3 :memory: ".tables"
 
 # Ver DataStore (configuración)
-adb shell run-as com.capicua.smsgateway cat files/datastore/gateway_config.preferences_pb
+adb shell run-as com.capicua.smstosms cat files/datastore/smstosms_config.preferences_pb
 ```
 
 ### Actualizar la aplicación
@@ -617,11 +617,11 @@ El `SmsDispatchWorker` nunca llegó a ejecutarse. Causa habitual: **modo Doze** 
 ```bash
 # Comprobar si la app está en la lista blanca de Doze
 adb shell dumpsys deviceidle whitelist
-# Si com.capicua.smsgateway NO aparece → aplicar la exención:
-adb shell dumpsys deviceidle whitelist +com.capicua.smsgateway
+# Si com.capicua.smstosms NO aparece → aplicar la exención:
+adb shell dumpsys deviceidle whitelist +com.capicua.smstosms
 ```
 
-Alternativa desde el teléfono: Ajustes → Aplicaciones → SMS Gateway → Batería → **Sin restricciones** (ver tabla en §7 para rutas por fabricante).
+Alternativa desde el teléfono: Ajustes → Aplicaciones → SMStoSMS → Batería → **Sin restricciones** (ver tabla en §7 para rutas por fabricante).
 
 **Caso B — `intentos > 0`, logs con ERROR de red**
 El worker corrió pero no pudo contactar al servidor.
@@ -645,7 +645,7 @@ Error permanente de configuración. El worker no reintentará.
 **Diagnóstico**:
 ```bash
 # Verificar permiso RECEIVE_BOOT_COMPLETED
-adb shell pm list permissions -g com.capicua.smsgateway
+adb shell pm list permissions -g com.capicua.smstosms
 
 # Verificar que BootReceiver está registrado
 adb shell dumpsys activity broadcasts | grep "BOOT_COMPLETED"
@@ -720,7 +720,7 @@ viewModelScope.launch {
 
 **Diagnóstico**:
 ```bash
-adb shell dumpsys batterystats --charged com.capicua.smsgateway
+adb shell dumpsys batterystats --charged com.capicua.smstosms
 ```
 
 **Causas y soluciones**:
@@ -734,4 +734,4 @@ adb shell dumpsys batterystats --charged com.capicua.smsgateway
 
 ---
 
-*Documentación generada para SMS Gateway v1.0 — Android SDK 26-35 — Kotlin 2.0.21*
+*Documentación generada para SMStoSMS v1.0 — Android SDK 26-35 — Kotlin 2.0.21*

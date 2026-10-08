@@ -7,22 +7,22 @@
 
     <fragment
         android:id="@+id/dashboardFragment"
-        android:name="com.capicua.smsgateway.presentation.dashboard.DashboardFragment"
+        android:name="com.capicua.smstosms.presentation.dashboard.DashboardFragment"
         android:label="@string/nav_dashboard" />
 
     <fragment
         android:id="@+id/logsFragment"
-        android:name="com.capicua.smsgateway.presentation.logs.LogsFragment"
+        android:name="com.capicua.smstosms.presentation.logs.LogsFragment"
         android:label="@string/nav_logs" />
 
     <fragment
         android:id="@+id/settingsFragment"
-        android:name="com.capicua.smsgateway.presentation.settings.SettingsFragment"
+        android:name="com.capicua.smstosms.presentation.settings.SettingsFragment"
         android:label="@string/nav_settings" />
 
     <fragment
         android:id="@+id/aboutFragment"
-        android:name="com.capicua.smsgateway.presentation.about.AboutFragment"
+        android:name="com.capicua.smstosms.presentation.about.AboutFragment"
         android:label="@string/nav_about" />
 
 </navigation>

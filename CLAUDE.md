@@ -16,31 +16,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 #   KEYSTORE_PASSWORD=<contraseña del almacén>
 #   KEY_ALIAS=<alias de la clave>
 #   KEY_PASSWORD=<contraseña de la clave>
-# El APK resultante se genera como smsgateway-<versionName>.apk
+# El APK resultante se genera como smstosms-<versionName>.apk
 ./gradlew assembleRelease
 
 # Unit tests
 ./gradlew test
 
 # Single test class
-./gradlew test --tests "com.capicua.smsgateway.data.repository.SmsRepositoryTest"
+./gradlew test --tests "com.capicua.smstosms.data.repository.SmsRepositoryTest"
 
 # Grant runtime permissions on a dedicated device (run after install)
-adb shell pm grant com.capicua.smsgateway android.permission.RECEIVE_SMS
-adb shell pm grant com.capicua.smsgateway android.permission.READ_SMS
-adb shell pm grant com.capicua.smsgateway android.permission.POST_NOTIFICATIONS
+adb shell pm grant com.capicua.smstosms android.permission.RECEIVE_SMS
+adb shell pm grant com.capicua.smstosms android.permission.READ_SMS
+adb shell pm grant com.capicua.smstosms android.permission.POST_NOTIFICATIONS
 
 # Exempt the app from Doze mode / battery optimization (REQUIRED for reliable dispatch)
 # Without this, WorkManager may be deferred indefinitely when the screen is off.
 # See "Device setup" section below for the on-device UI alternative.
-adb shell dumpsys deviceidle whitelist +com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist +com.capicua.smstosms
 
 # Verify the app is in the whitelist
 adb shell dumpsys deviceidle whitelist
-# Expected: a line containing "com.capicua.smsgateway"
+# Expected: a line containing "com.capicua.smstosms"
 
 # Remove from whitelist (if needed)
-adb shell dumpsys deviceidle whitelist -com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist -com.capicua.smstosms
 
 # Real-time log monitoring
 adb logcat -s "SmsReceiver" "SmsIngestionService" "SmsDispatchWorker" "HealthMonitorWorker"
@@ -111,9 +111,9 @@ Two tables, schema versioned in `SmsDatabase.kt`:
 
 WAL mode enabled. No `fallbackToDestructiveMigration` — migrations must be explicit.
 
-## Device setup (production gateway phone)
+## Device setup (dedicated production phone)
 
-These steps must be completed once on the dedicated Android device that acts as the SMS gateway.
+These steps must be completed once on the dedicated Android device that receives and forwards SMS.
 Skip any step already done.
 
 ### Why battery optimization must be disabled
@@ -125,14 +125,14 @@ ensures every SMS is forwarded within seconds of arrival, regardless of screen o
 ### Option A — ADB command (fastest, requires USB + developer tools)
 
 ```bash
-adb shell dumpsys deviceidle whitelist +com.capicua.smsgateway
+adb shell dumpsys deviceidle whitelist +com.capicua.smstosms
 ```
 
 Run once after install. To verify the app was added to the whitelist:
 
 ```bash
 adb shell dumpsys deviceidle whitelist
-# Expected output includes a line with: com.capicua.smsgateway
+# Expected output includes a line with: com.capicua.smstosms
 ```
 
 ### Option B — On-device UI (no USB required)
@@ -140,39 +140,39 @@ adb shell dumpsys deviceidle whitelist
 The exact path varies by manufacturer. Use the closest match:
 
 **Stock Android / Pixel**
-1. **Ajustes** → **Aplicaciones** → **SMS Gateway**
+1. **Ajustes** → **Aplicaciones** → **SMStoSMS**
 2. **Batería** → seleccionar **Sin restricciones**
 
 **Samsung (One UI)**
-1. **Ajustes** → **Aplicaciones** → **SMS Gateway**
+1. **Ajustes** → **Aplicaciones** → **SMStoSMS**
 2. **Batería** → desactivar **Permitir actividad en segundo plano** NO — en su lugar:
    - **Ajustes** → **Mantenimiento del dispositivo** → **Batería**
-   - **Límites de uso en segundo plano** → **Aplicaciones sin suspender** → **Añadir** → SMS Gateway
+   - **Límites de uso en segundo plano** → **Aplicaciones sin suspender** → **Añadir** → SMStoSMS
 
 **Xiaomi / MIUI / HyperOS**
-1. **Ajustes** → **Aplicaciones** → **Administrar aplicaciones** → **SMS Gateway**
+1. **Ajustes** → **Aplicaciones** → **Administrar aplicaciones** → **SMStoSMS**
 2. **Ahorro de batería** → **Sin restricciones**
 3. Volver a la ficha de la app → activar **Inicio automático**
 
 **Huawei / EMUI**
-1. **Ajustes** → **Aplicaciones** → **SMS Gateway** → **Consumo de batería**
+1. **Ajustes** → **Aplicaciones** → **SMStoSMS** → **Consumo de batería**
 2. Desactivar **Gestión inteligente de energía** y seleccionar **Sin restricciones**
 
 **OnePlus / OxygenOS / ColorOS**
-1. **Ajustes** → **Aplicaciones** → **SMS Gateway** → **Batería**
+1. **Ajustes** → **Aplicaciones** → **SMStoSMS** → **Batería**
 2. **Optimización de batería** → **No optimizar**
 
 > **Nota:** en cualquier fabricante también puedes buscar "Optimización de batería" directamente
-> en el buscador de Ajustes, seleccionar **Todas las aplicaciones** y cambiar SMS Gateway
+> en el buscador de Ajustes, seleccionar **Todas las aplicaciones** y cambiar SMStoSMS
 > a **No optimizar**.
 
 ### Other recommended settings (all manufacturers)
 
 | Setting | Where | Value |
 |---------|-------|-------|
-| Inicio automático | Ajustes → Aplicaciones → SMS Gateway | **Activado** |
-| Ejecutar en segundo plano | Ajustes → Aplicaciones → SMS Gateway → Batería | **Permitido** |
-| Optimización de batería | Ajustes → Batería → Optimización → SMS Gateway | **No optimizar** |
+| Inicio automático | Ajustes → Aplicaciones → SMStoSMS | **Activado** |
+| Ejecutar en segundo plano | Ajustes → Aplicaciones → SMStoSMS → Batería | **Permitido** |
+| Optimización de batería | Ajustes → Batería → Optimización → SMStoSMS | **No optimizar** |
 
 ---
 
@@ -181,4 +181,4 @@ The exact path varies by manufacturer. Use the closest match:
 - `libs.versions.toml` is the single source of truth for all dependency versions. Retrofit and kotlinx.serialization entries were removed (unused); do not re-add them unless actually wiring up Retrofit.
 - The `data/remote/` package is currently empty (reserved for future typed HTTP clients).
 - The existing unit test (`SmsRepositoryTest`) is a placeholder — its `SmsMessage` constructor calls use English field names (`sender`, `body`) that do **not** match the current domain model (which uses `telefono`, `mensaje`). The tests compile as standalone fixtures but do not exercise real repository code yet.
-- Debug variant uses `applicationId = com.capicua.smsgateway.debug`, so it can coexist with the release build on the same device.
+- Debug variant uses `applicationId = com.capicua.smstosms.debug`, so it can coexist with the release build on the same device.

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-        Política de seguridad de red para el SMS Gateway corporativo.
+        Política de seguridad de red para SMStoSMS.
         - Tráfico cleartext (HTTP) permitido para soportar servidores locales o sin TLS.
         - Para redes corporativas con certificados privados, añadir un <domain-config>
           con el certificado CA de la empresa en res/raw/.

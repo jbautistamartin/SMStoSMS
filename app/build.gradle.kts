@@ -8,29 +8,42 @@ plugins {
     alias(libs.plugins.navigation.safeargs)
 }
 
+// local.properties no se versiona: solo existe en la máquina de cada desarrollador.
+// Si falta, el build debug debe seguir funcionando; lo único que queda deshabilitado
+// es la firma de release.
 val localProps = Properties().apply {
-    load(rootProject.file("local.properties").inputStream())
+    val fichero = rootProject.file("local.properties")
+    if (fichero.exists()) fichero.inputStream().use { load(it) }
 }
 
+/** Claves de firma leídas de local.properties. Null si la clave no está definida. */
+val clavesFirma = listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
+    .associateWith { localProps[it] as String? }
+
+/** true solo si las cuatro claves están presentes y no vacías. */
+val hayFirmaRelease = clavesFirma.values.all { !it.isNullOrBlank() }
+
 android {
-    namespace = "com.capicua.smsgateway"
+    namespace = "com.capicua.smstosms"
     compileSdk = 35
 
     signingConfigs {
-        create("release") {
-            storeFile = file(localProps["KEYSTORE_PATH"] as String)
-            storePassword = localProps["KEYSTORE_PASSWORD"] as String
-            keyAlias = localProps["KEY_ALIAS"] as String
-            keyPassword = localProps["KEY_PASSWORD"] as String
+        if (hayFirmaRelease) {
+            create("release") {
+                storeFile = file(clavesFirma["KEYSTORE_PATH"]!!)
+                storePassword = clavesFirma["KEYSTORE_PASSWORD"]
+                keyAlias = clavesFirma["KEY_ALIAS"]
+                keyPassword = clavesFirma["KEY_PASSWORD"]
+            }
         }
     }
 
     defaultConfig {
-        applicationId = "com.capicua.smsgateway"
+        applicationId = "com.capicua.smstosms"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 1
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -40,7 +53,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("release")
+            // Sin claves en local.properties el APK sale sin firmar, pero el build no rompe.
+            if (hayFirmaRelease) signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -49,7 +63,7 @@ android {
                 if (buildType.name == "release") {
                     outputs.all {
                         (this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl)
-                            ?.outputFileName = "smsgateway-${versionName}.apk"
+                            ?.outputFileName = "smstosms-${versionName}.apk"
                     }
                 }
             }

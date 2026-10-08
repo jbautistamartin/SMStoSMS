@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SMSGateway</string>
+    <string name="app_name">SMStoSMS</string>
 
     <!-- Dashboard -->
     <string name="dashboard_title">SMS Recibidos</string>
@@ -39,6 +39,6 @@
 
     <!-- Permissions -->
     <string name="permiso_sms_titulo">Permiso obligatorio</string>
-    <string name="permiso_sms_mensaje">Esta aplicación necesita el permiso para recibir SMS. Sin él no puede funcionar como gateway. Concédelo en Ajustes → Aplicaciones → SMSGateway → Permisos.</string>
+    <string name="permiso_sms_mensaje">Esta aplicación necesita el permiso para recibir SMS. Sin él la aplicación no puede funcionar. Concédelo en Ajustes → Aplicaciones → SMStoSMS → Permisos.</string>
     <string name="permiso_entendido">Entendido</string>
 </resources>
