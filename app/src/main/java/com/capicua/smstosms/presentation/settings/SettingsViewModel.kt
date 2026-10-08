@@ -9,6 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.capicua.smstosms.data.config.AppConfig
 import com.capicua.smstosms.data.config.ConfigDataStore
+import com.capicua.smstosms.data.sms.ProveedorDeSims
+import com.capicua.smstosms.data.sms.SimDisponible
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +20,18 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val configDataStore: ConfigDataStore
+    private val configDataStore: ConfigDataStore,
+    private val proveedorDeSims: ProveedorDeSims
 ) : ViewModel() {
+
+    /**
+     * SIM activas del dispositivo.
+     *
+     * Lista vacía o de un solo elemento significa que no hay nada que elegir, y la pantalla
+     * oculta el selector: enviar con la SIM predeterminada del sistema es lo correcto en la
+     * inmensa mayoría de los dispositivos.
+     */
+    val simsDisponibles: List<SimDisponible> get() = proveedorDeSims.simsDisponibles()
 
     /**
      * Estado actual de la configuración.

@@ -37,11 +37,17 @@
     <string name="settings_intervalo">Intervalo inicial de reintento</string>
     <string name="settings_intervalo_ayuda">WorkManager aplica el backoff desde este valor. Entre 5 y 3600 s</string>
 
+    <string name="settings_seccion_sim">SIM de envío</string>
+    <string name="settings_sim">Tarjeta con la que enviar</string>
+    <string name="settings_sim_ayuda">Solo afecta a los reenvíos salientes. Con la predeterminada, decide el sistema.</string>
+    <string name="settings_sim_por_defecto">Predeterminada del sistema</string>
+
     <string name="settings_error_rango">Debe estar entre %1$d y %2$d</string>
     <string name="settings_error_rango_segundos">Debe estar entre %1$d y %2$d segundos</string>
 
     <!-- Navigation -->
     <string name="nav_dashboard">Inicio</string>
+    <string name="nav_reglas">Reglas</string>
     <string name="nav_logs">Logs</string>
     <string name="nav_settings">Config</string>
     <string name="nav_about">Acerca de</string>
@@ -53,6 +59,76 @@
     <string name="about_marcadores_titulo">Marcadores de la plantilla de reenvío</string>
     <string name="about_marcadores_detalle">{mensaje}   → texto del SMS (obligatorio)\n{telefono}  → número del remitente\n{fecha}     → timestamp ISO-8601 UTC</string>
     <string name="about_licencia">Distribuido bajo licencia GNU LGPL v2.1\nCopyright © 2026 Capicua</string>
+
+    <!-- Reglas: lista -->
+    <string name="reglas_title">Reglas</string>
+    <string name="reglas_vacio">Todavía no hay ninguna regla.
+
+Sin reglas no se reenvía nada: los SMS se reciben y se quedan marcados como «sin regla». Pulsa + para crear la primera.</string>
+    <string name="reglas_nueva">Nueva regla</string>
+    <string name="reglas_probar">Probar</string>
+    <string name="reglas_subir">Subir prioridad</string>
+    <string name="reglas_bajar">Bajar prioridad</string>
+    <string name="reglas_mas_opciones">Más opciones</string>
+    <string name="reglas_editar">Editar</string>
+    <string name="reglas_duplicar">Duplicar</string>
+    <string name="reglas_eliminar">Eliminar</string>
+    <string name="reglas_eliminar_confirmar">Se eliminará la regla «%1$s». Los reenvíos que ya hizo se conservan en el historial.</string>
+    <string name="reglas_eliminada">Regla «%1$s» eliminada</string>
+    <string name="reglas_exportar">Exportar reglas</string>
+    <string name="reglas_importar">Importar reglas</string>
+    <string name="reglas_exportadas">%1$d regla(s) exportadas</string>
+    <string name="reglas_importadas">%1$d regla(s) importadas</string>
+    <string name="reglas_importadas_con_rechazos">%1$d regla(s) importadas · %2$d rechazadas por datos no válidos</string>
+    <string name="reglas_fallo">No se pudo completar: %1$s</string>
+    <string name="reglas_criterio_telefono">Teléfono: %1$s</string>
+    <string name="reglas_criterio_mensaje">Mensaje: %1$s</string>
+    <string name="reglas_criterio_todo">Sin filtros: casa con todos los SMS</string>
+    <string name="reglas_destino">→ %1$s</string>
+    <string name="reglas_destino_continua">→ %1$s · sigue evaluando</string>
+
+    <!-- Reglas: editor -->
+    <string name="regla_titulo_nueva">Nueva regla</string>
+    <string name="regla_titulo_editar">Editar regla</string>
+    <string name="regla_nombre">Nombre</string>
+    <string name="regla_nombre_ayuda">Para reconocerla en la lista y en el registro</string>
+    <string name="regla_seccion_criterios">Cuándo se aplica</string>
+    <string name="regla_seccion_criterios_ayuda">Deja un campo vacío para no filtrar por él. La búsqueda es parcial: «codigo» casa con «Tu codigo es 4821». Usa ^…$ para exigir el texto completo y (?i) para ignorar mayúsculas.</string>
+    <string name="regla_regex_telefono">Expresión regular del remitente</string>
+    <string name="regla_regex_telefono_ayuda">Se aplica al número tal como llega, sin normalizar. Puede ser alfanumérico: BANCO, AMAZON</string>
+    <string name="regla_regex_mensaje">Expresión regular del mensaje</string>
+    <string name="regla_regex_mensaje_ayuda">Se aplica al texto completo del SMS</string>
+    <string name="regla_seccion_reenvio">Qué se reenvía</string>
+    <string name="regla_destino">Número destino</string>
+    <string name="regla_destino_ayuda">A dónde se reenvía el SMS si la regla casa</string>
+    <string name="regla_plantilla">Plantilla del texto</string>
+    <string name="regla_plantilla_ayuda">Marcadores: {mensaje}, {telefono}, {fecha}</string>
+    <string name="regla_previsualizacion">Así saldría</string>
+    <string name="regla_previsualizacion_vacia">Escribe una plantilla para ver el resultado</string>
+    <string name="regla_activa">Activa</string>
+    <string name="regla_activa_ayuda">Desactívala para que no se evalúe, sin borrarla</string>
+    <string name="regla_continuar">Seguir evaluando</string>
+    <string name="regla_continuar_ayuda">Tras casar esta regla, continúa con las siguientes. Permite reenviar el mismo SMS a varios números.</string>
+    <string name="regla_guardar">Guardar regla</string>
+
+    <!-- Reglas: panel de prueba -->
+    <string name="probar_title">Probar reglas</string>
+    <string name="probar_subtitulo">Escribe un SMS de ejemplo y comprueba qué regla casa, a qué número iría y con qué texto. No se envía nada hasta que lo pidas.</string>
+    <string name="probar_telefono">Remitente de ejemplo</string>
+    <string name="probar_telefono_ayuda">Un número o una cabecera alfanumérica</string>
+    <string name="probar_mensaje">Texto del SMS de ejemplo</string>
+    <string name="probar_mensaje_obligatorio">Escribe un texto de ejemplo</string>
+    <string name="probar_evaluar">Evaluar reglas</string>
+    <string name="probar_veredicto_sin_coincidencia">Ninguna regla casa: este SMS no se reenviaría</string>
+    <string name="probar_envio_real_ayuda">La prueba real envía un SMS de verdad al primer destino, y se cobra como cualquier otro.</string>
+    <string name="probar_enviar">Enviar de prueba</string>
+    <string name="probar_enviar_confirmar">Se enviará un SMS real a %1$s, en %2$d parte(s). Tiene coste.</string>
+    <string name="probar_envio_correcto">✓ Enviado a %1$s en %2$d parte(s)</string>
+    <string name="probar_envio_correcto_breve">SMS de prueba enviado a %1$s</string>
+    <string name="probar_envio_fallido">✗ %1$s</string>
+
+    <!-- Común -->
+    <string name="cancelar">Cancelar</string>
 
     <!-- Notifications -->
     <string name="notification_processing_sms">Procesando SMS entrante…</string>

@@ -14,8 +14,12 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import android.view.View.GONE
+import android.view.View.VISIBLE
+import android.widget.ArrayAdapter
 import com.capicua.smstosms.R
 import com.capicua.smstosms.data.config.AppConfig
+import com.capicua.smstosms.data.sms.SimDisponible
 import com.capicua.smstosms.databinding.FragmentSettingsBinding
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
@@ -36,6 +40,12 @@ class SettingsFragment : Fragment() {
 
     private var cargaInicial = true
 
+    /** SIM activas del dispositivo. Vacía o de un elemento significa que no hay que elegir. */
+    private var sims: List<SimDisponible> = emptyList()
+
+    /** SIM seleccionada en el formulario. */
+    private var simElegida = AppConfig.SIM_POR_DEFECTO
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -48,8 +58,35 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        configurarSelectorSim()
         observarConfiguracion()
         configurarBotonGuardar()
+    }
+
+    /**
+     * Monta el selector de SIM, pero solo si hay más de una.
+     *
+     * Con una sola tarjeta el selector no decidiría nada y añadiría una pregunta que el
+     * operador no tiene que responder, así que la sección entera se oculta.
+     */
+    private fun configurarSelectorSim() {
+        sims = viewModel.simsDisponibles
+        if (sims.size < 2) {
+            binding.layoutSim.visibility = GONE
+            return
+        }
+
+        binding.layoutSim.visibility = VISIBLE
+        val etiquetas = buildList {
+            add(getString(R.string.settings_sim_por_defecto))
+            addAll(sims.map { it.etiqueta })
+        }
+        binding.dropdownSim.setAdapter(
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, etiquetas)
+        )
+        binding.dropdownSim.setOnItemClickListener { _, _, posicion, _ ->
+            simElegida = if (posicion == 0) AppConfig.SIM_POR_DEFECTO else sims[posicion - 1].subscriptionId
+        }
     }
 
     private fun observarConfiguracion() {
@@ -68,6 +105,14 @@ class SettingsFragment : Fragment() {
     }
 
     private fun rellenarCampos(config: AppConfig) {
+        simElegida = config.subscriptionId
+        if (sims.size >= 2) {
+            val indice = sims.indexOfFirst { it.subscriptionId == config.subscriptionId }
+            binding.dropdownSim.setText(
+                if (indice >= 0) sims[indice].etiqueta else getString(R.string.settings_sim_por_defecto),
+                false
+            )
+        }
         binding.switchProtegerBucles.isChecked = config.protegerBucles
         binding.editTextMaxReenviosMinuto.setText(config.maxReenviosPorMinuto.toString())
         binding.editTextTimeoutEnvio.setText(config.timeoutEnvioSegundos.toString())
@@ -86,10 +131,6 @@ class SettingsFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            // La SIM elegida no se toca aquí: su selector llega con la pantalla de reglas.
-            // Conservamos el valor ya guardado para no pisarlo al guardar el resto.
-            val simActual = viewModel.config.value?.subscriptionId ?: AppConfig.SIM_POR_DEFECTO
-
             viewModel.guardar(
                 AppConfig(
                     maxReintentos = maxReintentos,
@@ -97,7 +138,7 @@ class SettingsFragment : Fragment() {
                     timeoutEnvioSegundos = timeoutEnvio,
                     maxReenviosPorMinuto = maxPorMinuto,
                     protegerBucles = binding.switchProtegerBucles.isChecked,
-                    subscriptionId = simActual
+                    subscriptionId = simElegida
                 )
             )
             Snackbar.make(binding.root, R.string.settings_guardado, Snackbar.LENGTH_SHORT).show()

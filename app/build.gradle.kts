@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.navigation.safeargs)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 // local.properties no se versiona: solo existe en la máquina de cada desarrollador.
@@ -124,6 +125,9 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
+
+    // kotlinx.serialization — exportar e importar el juego de reglas en JSON
+    implementation(libs.kotlinx.serialization.json)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

@@ -291,7 +291,7 @@ selector de SIM y el panel de prueba de reglas siguen en la fase 4.
 
 ---
 
-### Fase 4 — Pantalla de reglas · `[ ]`
+### Fase 4 — Pantalla de reglas · `[x]` completada el 7 oct 2026
 
 La configuración pasa de un formulario con una sola URL a una lista ordenable de reglas. Es la
 fase con más trabajo de interfaz.
@@ -309,6 +309,48 @@ fase con más trabajo de interfaz.
 **Verificación:** crear tres reglas, reordenarlas, desactivar la primera y comprobar que un SMS
 real toma la ruta esperada. Exportar, borrarlas todas, importar y acabar con las mismas tres en
 el mismo orden.
+
+#### Resultado real
+
+- `./gradlew test assembleDebug` → **BUILD SUCCESSFUL**. 55 tests, 0 fallos
+  (32 evaluador + 15 normalizador + 8 formato JSON).
+- La barra inferior pasa a cinco pestañas: Inicio · **Reglas** · Logs · Config · Acerca de.
+
+#### Pantallas nuevas
+
+| Fichero | Papel |
+|---------|-------|
+| `presentation/rules/ReglasFragment.kt` | Lista ordenada, activar, duplicar, borrar, exportar e importar |
+| `presentation/rules/ReglasAdapter.kt` | Fila con prioridad, criterios, destino e interruptor |
+| `presentation/rules/EditarReglaFragment.kt` | Alta y edición, con validación de regex al teclear |
+| `presentation/rules/ProbarReglasFragment.kt` | Panel de prueba sin enviar, más envío real opcional |
+| `data/rules/ReglasJson.kt` | Formato de intercambio versionado |
+| `data/sms/ProveedorDeSims.kt` | Enumera las SIM activas para el selector |
+
+#### Decisiones tomadas al implementar
+
+1. **Reordenar con flechas, no arrastrando.** En una fila que ya lleva un interruptor y un menú,
+   el gesto de arrastre competiría con ellos. Las flechas son inequívocas y accesibles. Al mover
+   se reescribe el orden de toda la lista en una transacción, en lugar de intercambiar dos
+   valores: así nunca hay dos reglas con el mismo `orden`, que haría la evaluación no
+   determinista.
+2. **Los ids no se exportan.** Un id es local a la base de datos del dispositivo; reutilizarlo
+   al importar provocaría colisiones. Importar **añade**, nunca reemplaza, y cada regla entra
+   como nueva conservando el orden relativo del fichero.
+3. **La importación valida antes de escribir** y cuenta aparte las rechazadas. Una regla con una
+   regex rota que entrase en silencio no reenviaría nunca y sería muy difícil de diagnosticar.
+4. **Al duplicar, la copia queda desactivada**, para que no empiece a reenviar antes de
+   revisarla.
+5. **El envío real de prueba manda solo el primer reenvío** y pide confirmación indicando
+   destino y número de partes. Una prueba no debe gastar varios SMS sin que quede claro.
+6. **El selector de SIM solo aparece si hay más de una.** Con una sola tarjeta no decidiría
+   nada y añadiría una pregunta que el operador no tiene que responder.
+
+#### Un fallo que encontró el propio test
+
+`kotlinx.serialization` omite por defecto los campos cuyo valor coincide con el predeterminado,
+así que el `version` del fichero exportado **no se escribía** — justo el campo cuya razón de ser
+es que una importación futura sepa qué formato está leyendo. Resuelto con `encodeDefaults = true`.
 
 ---
 

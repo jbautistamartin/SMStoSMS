@@ -11,6 +11,39 @@
         android:label="@string/nav_dashboard" />
 
     <fragment
+        android:id="@+id/reglasFragment"
+        android:name="com.capicua.smstosms.presentation.rules.ReglasFragment"
+        android:label="@string/nav_reglas">
+
+        <action
+            android:id="@+id/action_reglas_a_editar"
+            app:destination="@id/editarReglaFragment" />
+
+        <action
+            android:id="@+id/action_reglas_a_probar"
+            app:destination="@id/probarReglasFragment" />
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/editarReglaFragment"
+        android:name="com.capicua.smstosms.presentation.rules.EditarReglaFragment"
+        android:label="@string/nav_reglas">
+
+        <!-- 0 significa «regla nueva»: ver EditarReglaViewModel.NUEVA -->
+        <argument
+            android:name="reglaId"
+            app:argType="long"
+            android:defaultValue="0L" />
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/probarReglasFragment"
+        android:name="com.capicua.smstosms.presentation.rules.ProbarReglasFragment"
+        android:label="@string/probar_title" />
+
+    <fragment
         android:id="@+id/logsFragment"
         android:name="com.capicua.smstosms.presentation.logs.LogsFragment"
         android:label="@string/nav_logs" />
