@@ -71,6 +71,8 @@
     <string name="about_descripcion">Recibe SMS en este dispositivo y los reenvía automáticamente a otro número de teléfono, según reglas con expresiones regulares sobre el remitente y el texto.</string>
     <string name="about_marcadores_titulo">Marcadores de la plantilla de reenvío</string>
     <string name="about_marcadores_detalle">{mensaje}   → texto del SMS (obligatorio)\n{telefono}  → número del remitente\n{fecha}     → timestamp ISO-8601 UTC</string>
+    <string name="about_privacidad_titulo">Aviso de privacidad</string>
+    <string name="about_privacidad_detalle">Esta aplicación reenvía el contenido de los SMS recibidos al teléfono de otra persona. El remitente original no lo sabe y no ha dado su consentimiento. Los mensajes y los números implicados quedan almacenados en este dispositivo durante el periodo de retención configurado. El operador del dispositivo es el único responsable de cumplir la normativa de protección de datos aplicable.</string>
     <string name="about_licencia">Distribuido bajo licencia GNU LGPL v2.1\nCopyright © 2026 Capicua</string>
 
     <!-- Reglas: lista -->

@@ -392,7 +392,7 @@ en Logs y en el fichero exportado.
 
 ---
 
-### Fase 6 — Documentación, limpieza y release · `[ ]`
+### Fase 6 — Documentación, limpieza y release · `[x]` completada el 7 oct 2026
 
 Los tres documentos del repositorio describen hoy un gateway HTTP: se reescriben, no se parchean.
 
@@ -418,6 +418,79 @@ Los tres documentos del repositorio describen hoy un gateway HTTP: se reescriben
 siguiendo solo las instrucciones del README.
 
 **No entra:** publicación en el repositorio remoto.
+
+#### Resultado real
+
+- `./gradlew test assembleDebug assembleRelease` → **BUILD SUCCESSFUL**. 55 tests, 0 fallos.
+- `app/build/outputs/apk/release/smstosms-1.0.0.apk`, **2,7 MB** tras R8 (el debug son 9,5 MB).
+  `versionName 1.0.0`, `versionCode 1`, `applicationId com.capicua.smstosms`.
+- **El APK sale sin firmar**, porque esta copia de trabajo no tiene `local.properties` con el
+  almacén de claves. Verificado: no contiene ficheros de firma en `META-INF`. Para publicarlo
+  hay que añadir las cuatro claves y volver a compilar.
+
+#### Documentación reescrita entera
+
+| Fichero | Qué se hizo |
+|---------|-------------|
+| `README.md` | Reescrito. Nueva sección «Primeros pasos» y tabla de reglas con ejemplos. Aviso legal ampliado: los datos personales salen ahora hacia el teléfono de una persona, y los reenvíos tienen coste |
+| `docs/ARCHITECTURE.md` | Reescrito. Secciones nuevas: reglas de reenvío, mecanismo de envío, protecciones antibucle. Catorce incidencias documentadas, todas propias del reenvío por SMS |
+| `CLAUDE.md` | Reescrito. Añade una sección de **convenciones de nombres**, que el proyecto no tenía escritas y que fue motivo de duda durante la migración |
+| Pantalla «Acerca de» | Tarjeta de aviso de privacidad |
+
+#### Deuda saldada
+
+- `test-server/` eliminado: 12 ficheros del servidor .NET que probaba el endpoint HTTP.
+- `proguard-rules.pro` reescrito: fuera las reglas de OkHttp, y dentro lo que R8 no puede
+  deducir — en particular los `values()`/`valueOf()` de los enum de `domain.model`, que se
+  persisten como texto y se reconstruyen por reflexión. Sin eso, R8 podría renombrar sus
+  constantes y la lectura de la base de datos fallaría **solo en release**.
+- `CLAUDE.md` ya no afirma que `SmsRepositoryTest` compila, ni prohíbe `kotlinx.serialization`,
+  ni atribuye el rescate de huérfanos a `HealthMonitorWorker`.
+- La discrepancia de retención queda resuelta documentando el valor real: **30 días**, no 7.
+
+#### Gradle 9.3 + AGP 8.5.2: decisión
+
+**No se toca.** Compila y los tests pasan; cambiar el wrapper o subir AGP no aporta nada hoy y
+arriesga un build que funciona. Queda documentado en `CLAUDE.md` y en la §5 de la arquitectura:
+antes de pasar a Gradle 10 hay que elegir entre subir AGP o fijar el wrapper a Gradle 8.x,
+porque `android.applicationVariants.all` —el bloque que renombra el APK— desaparece.
+
+#### Un fallo de codificación que conviene recordar
+
+Al insertar texto en los XML con scripts a través de un heredoc, las barras invertidas dobles se
+colapsan en el transporte: un patrón con `\n` nunca coincide con el `
+` literal del fichero.
+Dos `replace` fallaron en silencio por esto antes de detectarlo. Para editar recursos conviene
+usar anclas sin barras invertidas, o herramientas de edición directa.
+
+---
+
+## 7. Estado final
+
+Las seis fases están completas. La aplicación recibe SMS y los reenvía a otro número según
+reglas con expresiones regulares, con protección antibucle, confirmación real de envío y
+registro de auditoría.
+
+| Fase | Estado | Commit |
+|------|--------|--------|
+| 1 · Renombrado integral | Completada | `c695774` |
+| 2 · Modelo de reglas y motor | Completada | `653181b` |
+| 3 · Reenvío por SmsManager | Completada | `1a14c30` |
+| 4 · Pantalla de reglas | Completada | `dee7db6` |
+| 5 · Inicio y logs | Completada | `0baf067` |
+| 6 · Documentación y release | Completada | — |
+
+### Lo que queda pendiente, por orden de utilidad
+
+1. **Firmar el APK de release.** Añadir las cuatro claves a `local.properties` y recompilar.
+2. **Probar en dispositivo real con dos teléfonos.** Todo lo verificado hasta aquí es compilación
+   y tests unitarios: el circuito completo SIM → regla → `SmsManager` → teléfono destino no se ha
+   ejecutado nunca contra una red de operador.
+3. **Etiquetar `v1.0.0`** y empujar al repositorio nuevo.
+4. **Decidir la convención de nombres de los casos de uso**: `GetSmsListUseCase` está en inglés y
+   `ProcesarSmsEntranteUseCase` en español. Son dos ficheros y tres referencias.
+5. **Fase 7, si interesa:** destino extraído de un grupo de captura de la regex, reglas con
+   ventana horaria, y tests instrumentados de Room y del worker.
 
 ---
 

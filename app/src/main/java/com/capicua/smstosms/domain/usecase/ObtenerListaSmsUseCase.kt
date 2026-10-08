@@ -14,7 +14,7 @@ import javax.inject.Inject
  * Devuelve un flujo reactivo con todos los SMS almacenados y sus reenvíos, más recientes
  * primero. Cada elemento lleva el mensaje que llegó y lo que se hizo con él.
  */
-class GetSmsListUseCase @Inject constructor(
+class ObtenerListaSmsUseCase @Inject constructor(
     private val repository: SmsRepository
 ) {
     operator fun invoke(): Flow<List<SmsConReenvios>> = repository.observarTodosConReenvios()

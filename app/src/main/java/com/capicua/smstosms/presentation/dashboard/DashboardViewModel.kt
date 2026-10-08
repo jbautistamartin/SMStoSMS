@@ -11,7 +11,7 @@ import com.capicua.smstosms.data.repository.ReenvioRepository
 import com.capicua.smstosms.data.repository.ReglaRepository
 import com.capicua.smstosms.data.repository.SmsRepository
 import com.capicua.smstosms.domain.model.SmsConReenvios
-import com.capicua.smstosms.domain.usecase.GetSmsListUseCase
+import com.capicua.smstosms.domain.usecase.ObtenerListaSmsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -27,14 +27,14 @@ data class ResumenInicio(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val getSmsListUseCase: GetSmsListUseCase,
+    private val obtenerListaSms: ObtenerListaSmsUseCase,
     private val smsRepository: SmsRepository,
     reenvioRepository: ReenvioRepository,
     reglaRepository: ReglaRepository
 ) : ViewModel() {
 
     /** Lista reactiva de SMS con sus reenvíos, más recientes primero. */
-    val smsList: Flow<List<SmsConReenvios>> = getSmsListUseCase()
+    val smsList: Flow<List<SmsConReenvios>> = obtenerListaSms()
 
     /**
      * Cifras de cabecera.
