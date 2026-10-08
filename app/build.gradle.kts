@@ -23,6 +23,13 @@ val clavesFirma = listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY
 /** true solo si las cuatro claves están presentes y no vacías. */
 val hayFirmaRelease = clavesFirma.values.all { !it.isNullOrBlank() }
 
+// Room exporta el esquema a app/schemas/ (exportSchema = true en SmsDatabase). Sin este
+// argumento el procesador no sabe dónde escribirlo y solo emite un warning, que es lo que
+// venía pasando. Los JSON generados se versionan: son la referencia para escribir migraciones.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.capicua.smstosms"
     compileSdk = 35

@@ -7,47 +7,57 @@ package com.capicua.smstosms.data.local.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import com.capicua.smstosms.data.local.db.dao.LogDao
+import com.capicua.smstosms.data.local.db.dao.ReenvioDao
+import com.capicua.smstosms.data.local.db.dao.ReglaDao
 import com.capicua.smstosms.data.local.db.dao.SmsDao
 import com.capicua.smstosms.data.local.db.entity.LogEntity
+import com.capicua.smstosms.data.local.db.entity.ReenvioEntity
+import com.capicua.smstosms.data.local.db.entity.ReglaEntity
 import com.capicua.smstosms.data.local.db.entity.SmsEntity
 
+/**
+ * Base de datos local de SMStoSMS.
+ *
+ * ## Por qué el esquema arranca otra vez en la versión 1
+ * SMSGateway llegó a la versión 2 con una migración 1→2. Al cambiar el `applicationId` a
+ * `com.capicua.smstosms`, Android trata esta aplicación como una app distinta con su propio
+ * directorio de datos, y además el fichero pasó a llamarse [NOMBRE_BD]. Ningún dispositivo
+ * tiene esta base de datos, así que no hay nada que migrar y la historia de migraciones
+ * anterior no aporta nada: se colapsa en un esquema v1 limpio con las cuatro tablas.
+ *
+ * ## Tablas
+ * | Tabla         | Papel                                                              |
+ * |---------------|--------------------------------------------------------------------|
+ * | `sms`         | Outbox de mensajes entrantes: se persiste antes de intentar nada.  |
+ * | `reglas`      | Reglas de reenvío, ordenadas por prioridad.                        |
+ * | `reenvios`    | Unidad de despacho: un envío a un destino, con su propio estado.   |
+ * | `log_entries` | Registro de auditoría de todos los eventos del sistema.            |
+ *
+ * ## Migraciones
+ * Nunca usar `fallbackToDestructiveMigration()`: perderíamos SMS y reenvíos pendientes.
+ * Mientras no haya una 1.0.0 publicada, el esquema v1 sigue siendo editable y la forma de
+ * aplicar un cambio en desarrollo es desinstalar la app o borrar sus datos. A partir de la
+ * primera release, cualquier cambio exige subir la versión y escribir su `Migration`.
+ */
 @Database(
-    entities = [SmsEntity::class, LogEntity::class],
-    version = 2,
+    entities = [
+        SmsEntity::class,
+        ReglaEntity::class,
+        ReenvioEntity::class,
+        LogEntity::class
+    ],
+    version = 1,
     exportSchema = true
 )
 abstract class SmsDatabase : RoomDatabase() {
 
     abstract fun smsDao(): SmsDao
+    abstract fun reglaDao(): ReglaDao
+    abstract fun reenvioDao(): ReenvioDao
     abstract fun logDao(): LogDao
 
     companion object {
         const val NOMBRE_BD = "smstosms.db"
-
-        /**
-         * Migración 1→2: añade la tabla log_entries.
-         * Nunca usar fallbackToDestructiveMigration() — perderíamos SMS pendientes.
-         */
-        val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS `log_entries` (
-                        `id`         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                        `tipo`       TEXT    NOT NULL,
-                        `sms_id`     TEXT,
-                        `detalle`    TEXT    NOT NULL,
-                        `codigo_http` INTEGER,
-                        `timestamp`  INTEGER NOT NULL
-                    )
-                    """.trimIndent()
-                )
-                db.execSQL("CREATE INDEX IF NOT EXISTS `index_log_entries_sms_id` ON `log_entries` (`sms_id`)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS `index_log_entries_timestamp` ON `log_entries` (`timestamp`)")
-            }
-        }
     }
 }

@@ -7,6 +7,10 @@ package com.capicua.smstosms.di
 
 import com.capicua.smstosms.data.repository.LogRepository
 import com.capicua.smstosms.data.repository.LogRepositoryImpl
+import com.capicua.smstosms.data.repository.ReenvioRepository
+import com.capicua.smstosms.data.repository.ReenvioRepositoryImpl
+import com.capicua.smstosms.data.repository.ReglaRepository
+import com.capicua.smstosms.data.repository.ReglaRepositoryImpl
 import com.capicua.smstosms.data.repository.SmsRepository
 import com.capicua.smstosms.data.repository.SmsRepositoryImpl
 import dagger.Binds
@@ -22,6 +26,14 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSmsRepository(impl: SmsRepositoryImpl): SmsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindReglaRepository(impl: ReglaRepositoryImpl): ReglaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindReenvioRepository(impl: ReenvioRepositoryImpl): ReenvioRepository
 
     @Binds
     @Singleton

@@ -69,7 +69,10 @@ lo está, pese a `exportSchema = true`).
 
 ## 3. Fases
 
-Cada fase termina en un estado compilable y comprobable, y en un commit propio.
+Cada fase termina en un estado compilable y comprobable, con los cambios en el árbol de trabajo.
+
+> **El commit lo pide el usuario, nunca se hace por iniciativa propia.** Al cerrar una fase se
+> informa del estado y se para; revisar el diff antes de que entre en la historia es su decisión.
 
 ### Fase 1 — Renombrado integral · `[x]` completada el 7 oct 2026
 
@@ -140,7 +143,7 @@ decidir en la fase 6 si se sube AGP o se baja el wrapper.
 
 ---
 
-### Fase 2 — Modelo de reglas y motor de coincidencia · `[ ]`
+### Fase 2 — Modelo de reglas y motor de coincidencia · `[x]` completada el 7 oct 2026
 
 La pieza nueva del dominio, construida y probada antes de conectarla a nada. El evaluador es
 Kotlin puro, sin Android, así que se cubre con tests unitarios de verdad.
@@ -151,12 +154,52 @@ Kotlin puro, sin Android, así que se cubre con tests unitarios de verdad.
 - `EvaluadorDeReglas`: recorre las reglas activas por `orden`, para en la primera que case salvo
   que lleve `continuar`, y resuelve la plantilla.
 - Esquema colapsado a v1 y `room.schemaLocation` configurado.
-- El worker pasa a trabajar sobre `reenvioId`, no sobre `smsId`.
+- ~~El worker pasa a trabajar sobre `reenvioId`~~ → **movido a la fase 3**, ver más abajo.
 
 **Verificación:** `./gradlew test` en verde con casos reales — regex inválida, regla desactivada,
 sin coincidencia, orden respetado, `continuar` activo, plantilla con marcadores, reenvío a uno mismo.
 
 **No entra:** nada de interfaz ni de envío; el motor queda inyectable pero sin usar.
+
+#### Resultado real
+
+- `./gradlew test assembleDebug` → **BUILD SUCCESSFUL**. 32 tests en
+  `EvaluadorDeReglasTest`, 0 fallos.
+- Esquema v1 exportado a `app/schemas/com.capicua.smstosms.data.local.db.SmsDatabase/1.json`
+  con las cuatro tablas (`sms`, `reglas`, `reenvios`, `log_entries`) y las dos claves ajenas de
+  `reenvios` correctas: `sms_id → sms.id` en CASCADE y `regla_id → reglas.id` en SET NULL.
+- El warning de KSP «Schema export directory was not provided» ha desaparecido.
+
+#### Ficheros nuevos
+
+| Fichero | Papel |
+|---------|-------|
+| `domain/model/Regla.kt` | Regla de reenvío |
+| `domain/model/Reenvio.kt`, `EstadoReenvio.kt` | Unidad de despacho y su estado |
+| `domain/rules/EvaluadorDeReglas.kt` | Motor: evalúa, resuelve plantilla, valida patrones |
+| `domain/rules/ResultadoEvaluacion.kt` | `Coincidencia`, `ReglaInvalida`, `CampoRegla` |
+| `data/local/db/entity/ReglaEntity.kt`, `ReenvioEntity.kt` | Tablas |
+| `data/local/db/dao/ReglaDao.kt`, `ReenvioDao.kt` | Consultas |
+| `data/repository/Regla{Repository,RepositoryImpl}.kt` | Contrato e implementación |
+| `data/repository/Reenvio{Repository,RepositoryImpl}.kt` | Contrato e implementación |
+
+#### Tres desviaciones respecto al plan
+
+1. **El worker sigue trabajando sobre `smsId`.** Cambiarlo a `reenvioId` en esta fase habría
+   dejado la app justo en el estado que el plan prohíbe: el worker buscando reenvíos que nada
+   crea todavía. La migración del worker va con la fase 3, donde toda la ruta de despacho cambia
+   de golpe. La fase 2 queda así puramente aditiva: la app sigue funcionando como hoy.
+2. **No se añadió `kotlinx-coroutines-test`.** El evaluador es síncrono y ningún test lo
+   necesita aún. Añadir una dependencia sin uso contradice la política que el propio
+   `CLAUDE.md` fija para `libs.versions.toml`. Entrará cuando haya tests de funciones `suspend`.
+3. **La tabla `sms` se deja intacta**, todavía con `enviado`, `intentos` y `ultimo_error`, que
+   en el modelo nuevo pertenecen a `reenvios`. Normalizarla arrastra al worker, a los dos
+   workers periódicos, al dashboard y al adaptador, así que se hace en la fase 3. El esquema
+   sigue en v1 y es editable hasta la 1.0.0.
+
+> **Al actualizar un dispositivo que ya tenga la build de la fase 1:** su base de datos está en
+> la versión 2 y pasar a la v1 es un *downgrade*, que Room rechaza. En desarrollo se resuelve
+> desinstalando la app o borrando sus datos. No se añade `fallbackToDestructiveMigration`.
 
 ---
 
@@ -165,6 +208,9 @@ sin coincidencia, orden respetado, `continuar` activo, plantilla con marcadores,
 El corazón del cambio. `SmsDispatchWorker` deja de hablar HTTP y pasa a enviar SMS, conservando
 intacta su tabla de decisiones.
 
+- **Heredado de la fase 2:** migrar `SmsDispatchWorker` de `smsId` a `reenvioId`, normalizar la
+  tabla `sms` (sacar `enviado`, `intentos` y `ultimo_error`, que ahora viven en `reenvios`) y
+  adaptar `OrphanRescueWorker` y `HealthMonitorWorker` a la cola de reenvíos.
 - `SmsSender`: `divideMessage` + `sendMultipartTextMessage`, un `PendingIntent` por parte y un
   receptor que convierte el broadcast en una corrutina suspendida con timeout.
 - Mapeo de resultados:
@@ -296,5 +342,6 @@ regex, reglas con ventana horaria, y tests instrumentados de Room y del worker.
 ## 6. Git
 
 La historia completa de SMSGateway se conserva. `develop` y `main` quedan intactas y no hay
-remoto configurado todavía. Cada fase es un commit en `feature/2026_SMStoSMS`; al cerrar la fase 6,
-una etiqueta `v1.0.0` lista para empujar al repositorio nuevo.
+remoto configurado todavía. Cada fase da lugar a un commit en `feature/2026_SMStoSMS` **cuando el
+usuario lo pide**, y al cerrar la fase 6 a una etiqueta `v1.0.0` lista para empujar al repositorio
+nuevo.
