@@ -10,18 +10,17 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Wrapper sobre DataStore<Preferences> para la configuración de la aplicación.
+ * Wrapper sobre DataStore<Preferences> para los ajustes generales.
  *
  * - Las lecturas son reactivas (Flow).
  * - Las escrituras son atómicas (DataStore.edit usa transacción).
- * - Los valores por defecto están en AppConfig.
+ * - Los valores por defecto están declarados una sola vez, en [AppConfig].
  */
 @Singleton
 class ConfigDataStore @Inject constructor(
@@ -29,31 +28,35 @@ class ConfigDataStore @Inject constructor(
 ) {
     /** Flujo reactivo con la configuración actual. Emite inmediatamente al suscribirse. */
     val config: Flow<AppConfig> = dataStore.data.map { prefs ->
+        val porDefecto = AppConfig()
         AppConfig(
-            urlTemplate                = prefs[Keys.URL_TEMPLATE]           ?: "",
-            timeoutSegundos            = prefs[Keys.TIMEOUT_SEGUNDOS]        ?: 30,
-            maxReintentos              = prefs[Keys.MAX_REINTENTOS]          ?: 10,
-            intervaloReintentoSegundos = prefs[Keys.INTERVALO_REINTENTO]     ?: 30,
-            aceptarCertificadosInvalidos = prefs[Keys.ACEPTAR_CERTS_INVALIDOS] ?: false
+            maxReintentos              = prefs[Keys.MAX_REINTENTOS]        ?: porDefecto.maxReintentos,
+            intervaloReintentoSegundos = prefs[Keys.INTERVALO_REINTENTO]   ?: porDefecto.intervaloReintentoSegundos,
+            timeoutEnvioSegundos       = prefs[Keys.TIMEOUT_ENVIO]         ?: porDefecto.timeoutEnvioSegundos,
+            maxReenviosPorMinuto       = prefs[Keys.MAX_REENVIOS_MINUTO]   ?: porDefecto.maxReenviosPorMinuto,
+            protegerBucles             = prefs[Keys.PROTEGER_BUCLES]       ?: porDefecto.protegerBucles,
+            subscriptionId             = prefs[Keys.SUBSCRIPTION_ID]       ?: porDefecto.subscriptionId
         )
     }
 
     /** Guarda toda la configuración de forma atómica. */
     suspend fun guardar(config: AppConfig) {
         dataStore.edit { prefs ->
-            prefs[Keys.URL_TEMPLATE]              = config.urlTemplate
-            prefs[Keys.TIMEOUT_SEGUNDOS]          = config.timeoutSegundos
-            prefs[Keys.MAX_REINTENTOS]            = config.maxReintentos
-            prefs[Keys.INTERVALO_REINTENTO]       = config.intervaloReintentoSegundos
-            prefs[Keys.ACEPTAR_CERTS_INVALIDOS]   = config.aceptarCertificadosInvalidos
+            prefs[Keys.MAX_REINTENTOS]      = config.maxReintentos
+            prefs[Keys.INTERVALO_REINTENTO] = config.intervaloReintentoSegundos
+            prefs[Keys.TIMEOUT_ENVIO]       = config.timeoutEnvioSegundos
+            prefs[Keys.MAX_REENVIOS_MINUTO] = config.maxReenviosPorMinuto
+            prefs[Keys.PROTEGER_BUCLES]     = config.protegerBucles
+            prefs[Keys.SUBSCRIPTION_ID]     = config.subscriptionId
         }
     }
 
     private object Keys {
-        val URL_TEMPLATE              = stringPreferencesKey("url_template")
-        val TIMEOUT_SEGUNDOS          = intPreferencesKey("timeout_segundos")
-        val MAX_REINTENTOS            = intPreferencesKey("max_reintentos")
-        val INTERVALO_REINTENTO       = intPreferencesKey("intervalo_reintento")
-        val ACEPTAR_CERTS_INVALIDOS   = booleanPreferencesKey("aceptar_certs_invalidos")
+        val MAX_REINTENTOS      = intPreferencesKey("max_reintentos")
+        val INTERVALO_REINTENTO = intPreferencesKey("intervalo_reintento")
+        val TIMEOUT_ENVIO       = intPreferencesKey("timeout_envio_segundos")
+        val MAX_REENVIOS_MINUTO = intPreferencesKey("max_reenvios_por_minuto")
+        val PROTEGER_BUCLES     = booleanPreferencesKey("proteger_bucles")
+        val SUBSCRIPTION_ID     = intPreferencesKey("subscription_id")
     }
 }

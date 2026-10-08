@@ -5,16 +5,15 @@
 
 package com.capicua.smstosms.data.repository
 
+import com.capicua.smstosms.domain.model.EstadoSms
 import com.capicua.smstosms.domain.model.SmsMessage
 import kotlinx.coroutines.flow.Flow
-import java.time.Instant
 
 /**
- * Contrato del repositorio de SMS.
+ * Contrato del repositorio de SMS entrantes.
  *
- * Es la única fuente de verdad para los datos de mensajes. Coordina:
- * - La capa de persistencia local (Room / [SmsDatabase])
- * - La cola de despacho (WorkManager)
+ * Es la única fuente de verdad para los mensajes recibidos. No sabe nada de envíos: la cola de
+ * despacho y su estado son responsabilidad de [ReenvioRepository].
  *
  * Todas las operaciones de escritura son atómicas a nivel de base de datos.
  * La UI solo debe interactuar con los métodos que devuelven [Flow].
@@ -24,67 +23,45 @@ interface SmsRepository {
     // ── Escritura ─────────────────────────────────────────────────────────────
 
     /**
-     * Persiste un nuevo SMS en la base de datos local.
+     * Persiste un SMS nuevo en estado [EstadoSms.PENDIENTE].
      * Lanza excepción si ya existe un SMS con el mismo [SmsMessage.id].
      */
     suspend fun guardar(sms: SmsMessage)
 
-    /**
-     * Marca el SMS como enviado con éxito.
-     * Registra [fechaEnvio] y limpia [ultimoError].
-     */
-    suspend fun marcarComoEnviado(id: String, fechaEnvio: Instant)
+    /** Cambia el estado de tramitación del SMS. */
+    suspend fun actualizarEstado(id: String, estado: EstadoSms)
+
+    /** Marca el SMS como [EstadoSms.DESCARTADO] anotando el motivo. */
+    suspend fun marcarDescartado(id: String, motivo: String)
 
     /**
-     * Registra un intento de envío fallido:
-     * - Incrementa [SmsMessage.intentos] en 1.
-     * - Guarda el [error] en [SmsMessage.ultimoError].
+     * Elimina los SMS ya tramitados recibidos antes de [antesDeEpochMs].
+     * Llamado periódicamente por el monitor de salud según la política de retención.
+     * Los pendientes se conservan siempre.
      */
-    suspend fun registrarError(id: String, error: String)
+    suspend fun limpiarTramitadosAntiguos(antesDeEpochMs: Long)
 
-    /**
-     * Encola un [SmsDispatchWorker] en WorkManager para el SMS indicado.
-     * Usa [ExistingWorkPolicy.KEEP] para evitar workers duplicados por el mismo SMS.
-     */
-    fun encolarEnvio(smsId: String)
-
-    /**
-     * Elimina los SMS ya enviados cuya fecha de envío sea anterior a [antesDeEpochMs].
-     * Llamado periódicamente por [HealthMonitorWorker] según la política de retención.
-     */
-    suspend fun limpiarEnviadosAntiguos(antesDeEpochMs: Long)
-
-    /** Elimina todos los SMS de la base de datos. */
+    /** Elimina todos los SMS y, en cascada, sus reenvíos. */
     suspend fun limpiarTodos()
 
     // ── Lectura reactiva (Flow) ───────────────────────────────────────────────
 
-    /**
-     * Flujo reactivo con todos los SMS, ordenados por fecha de recepción descendente.
-     * Se actualiza automáticamente al insertar o modificar cualquier fila.
-     */
+    /** Todos los SMS, más recientes primero. Se actualiza al cambiar cualquier fila. */
     fun observarTodos(): Flow<List<SmsMessage>>
 
-    /**
-     * Flujo reactivo con el número de SMS pendientes ([enviado] = false).
-     */
+    /** Número de SMS recibidos y aún sin evaluar. */
     fun observarContadorPendientes(): Flow<Int>
 
-    /**
-     * Flujo reactivo con el total de SMS almacenados.
-     */
+    /** Total de SMS almacenados. */
     fun observarContadorTotal(): Flow<Int>
 
     // ── Lectura puntual ───────────────────────────────────────────────────────
 
-    /**
-     * Devuelve el SMS con el [id] indicado, o null si no existe.
-     */
     suspend fun obtenerPorId(id: String): SmsMessage?
 
     /**
-     * Devuelve la lista de SMS pendientes de envío ([enviado] = false),
-     * ordenados por fecha de recepción ascendente (FIFO).
+     * SMS pendientes de evaluar, en orden de llegada.
+     * Lo consume el rescate de huérfanos.
      */
     suspend fun obtenerPendientes(): List<SmsMessage>
 }

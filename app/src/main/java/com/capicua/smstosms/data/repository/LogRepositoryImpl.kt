@@ -45,8 +45,9 @@ class LogRepositoryImpl @Inject constructor(
         id = id,
         tipo = tipo.name,
         smsId = smsId,
+        reenvioId = reenvioId,
+        destino = destino,
         detalle = detalle,
-        codigoHttp = codigoHttp,
         timestamp = timestamp.toEpochMilli()
     )
 
@@ -54,8 +55,9 @@ class LogRepositoryImpl @Inject constructor(
         id = id,
         tipo = LogTipo.valueOf(tipo),
         smsId = smsId,
+        reenvioId = reenvioId,
+        destino = destino,
         detalle = detalle,
-        codigoHttp = codigoHttp,
         timestamp = Instant.ofEpochMilli(timestamp)
     )
 }

@@ -13,11 +13,8 @@ import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.capicua.smstosms.R
-import com.capicua.smstosms.data.repository.LogRepository
-import com.capicua.smstosms.domain.model.LogEntry
-import com.capicua.smstosms.domain.model.LogTipo
 import com.capicua.smstosms.domain.model.SmsMessage
-import com.capicua.smstosms.domain.usecase.SaveSmsUseCase
+import com.capicua.smstosms.domain.usecase.ProcesarSmsEntranteUseCase
 import com.capicua.smstosms.util.Constants
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +27,7 @@ import java.time.Instant
 import javax.inject.Inject
 
 /**
- * Foreground Service encargado de persistir un SMS entrante en la base de datos local.
+ * Foreground Service encargado de persistir y tramitar un SMS entrante.
  *
  * ## Por qué un Foreground Service
  * Un [BroadcastReceiver] tiene un timeout de ~10 s y el proceso puede ser eliminado
@@ -44,9 +41,11 @@ import javax.inject.Inject
  * SmsReceiver → startForegroundService(intent) → onStartCommand()
  *                                                   ├─ startForeground()   [obligatorio < 5 s]
  *                                                   ├─ lanzar coroutine IO
- *                                                   │    └─ saveUseCase(sms)
- *                                                   │         ├─ repository.guardar()    [Room INSERT]
- *                                                   │         └─ repository.encolarEnvio() [WorkManager]
+ *                                                   │    └─ procesarSms(sms)
+ *                                                   │         ├─ guardar()          [Room INSERT]
+ *                                                   │         ├─ evaluar reglas
+ *                                                   │         ├─ crear reenvíos
+ *                                                   │         └─ encolar workers   [WorkManager]
  *                                                   └─ stopSelf(startId)
  * ```
  *
@@ -56,17 +55,14 @@ import javax.inject.Inject
  * simultáneos se procesen correctamente sin interferencia.
  *
  * ## Inyección con Hilt
- * [SaveSmsUseCase] es inyectado por Hilt gracias a [@AndroidEntryPoint].
+ * [ProcesarSmsEntranteUseCase] es inyectado por Hilt gracias a [@AndroidEntryPoint].
  * El [BroadcastReceiver] no necesita inyección porque solo construye el Intent.
  */
 @AndroidEntryPoint
 class SmsIngestionService : Service() {
 
     @Inject
-    lateinit var saveUseCase: SaveSmsUseCase
-
-    @Inject
-    lateinit var logRepository: LogRepository
+    lateinit var procesarSms: ProcesarSmsEntranteUseCase
 
     /**
      * Scope propio del servicio. Usa [SupervisorJob] para que el fallo de una coroutine
@@ -103,19 +99,13 @@ class SmsIngestionService : Service() {
 
         serviceScope.launch {
             try {
-                // saveUseCase hace dos cosas atómicamente desde la perspectiva del flujo:
-                //   1. repository.guardar()      → INSERT en Room
-                //   2. repository.encolarEnvio() → OneTimeWorkRequest en WorkManager
-                saveUseCase(sms)
-                Timber.i("SmsIngestionService: SMS ${sms.id} persistido y encolado correctamente")
-                logRepository.insertar(
-                    LogEntry(
-                        tipo      = LogTipo.SMS_RECIBIDO,
-                        smsId     = sms.id,
-                        detalle   = "SMS recibido de ${sms.telefono} (${sms.mensaje.length} chars)",
-                        timestamp = Instant.now()
-                    )
-                )
+                // procesarSms hace la cadena completa desde la perspectiva del flujo:
+                //   1. INSERT en Room (outbox, estado PENDIENTE)
+                //   2. protecciones antibucle y de frecuencia
+                //   3. evaluación de reglas y creación de los reenvíos
+                //   4. un OneTimeWorkRequest por reenvío
+                procesarSms(sms)
+                Timber.i("SmsIngestionService: SMS ${sms.id} tramitado correctamente")
             } catch (e: Exception) {
                 // El insert puede fallar si el UUID ya existe (duplicado) o si hay
                 // un error de disco. En ambos casos registramos y continuamos.

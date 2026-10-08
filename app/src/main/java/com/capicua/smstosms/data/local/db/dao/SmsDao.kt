@@ -18,7 +18,8 @@ import kotlinx.coroutines.flow.Flow
  * Convenciones:
  * - Las funciones suspendidas se ejecutan en el dispatcher de Room (IO).
  * - Las funciones que devuelven [Flow] emiten automáticamente cuando la tabla cambia.
- * - Nunca se sobreescribe un SMS existente ([OnConflictStrategy.ABORT]); el ID es inmutable.
+ * - Nunca se sobreescribe un SMS existente ([OnConflictStrategy.ABORT]); el id es inmutable.
+ * - Los estados se reciben como texto (el `name` de `EstadoSms`) desde el repositorio.
  */
 @Dao
 interface SmsDao {
@@ -26,91 +27,60 @@ interface SmsDao {
     // ── Escritura ─────────────────────────────────────────────────────────────
 
     /**
-     * Inserta un nuevo SMS.
-     * Falla con excepción si ya existe un registro con el mismo [id] (previene duplicados).
+     * Inserta un SMS nuevo.
+     * Falla con excepción si ya existe un registro con el mismo [id], lo que previene
+     * duplicados si el broadcast del sistema llegara dos veces.
      */
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertar(sms: SmsEntity)
 
-    /**
-     * Marca el SMS como enviado con éxito y registra el instante de confirmación.
-     * Limpia [ultimo_error] porque el envío fue exitoso.
-     */
-    @Query("""
-        UPDATE sms
-        SET enviado      = 1,
-            fecha_envio  = :fechaEnvioMs,
-            ultimo_error = NULL
-        WHERE id = :id
-    """)
-    suspend fun marcarEnviado(id: String, fechaEnvioMs: Long)
+    /** Cambia el estado de tramitación y limpia el motivo de descarte. */
+    @Query("UPDATE sms SET estado = :estado, motivo_descarte = NULL WHERE id = :id")
+    suspend fun actualizarEstado(id: String, estado: String)
+
+    /** Marca el SMS como descartado anotando por qué. */
+    @Query("UPDATE sms SET estado = :estadoDescartado, motivo_descarte = :motivo WHERE id = :id")
+    suspend fun marcarDescartado(id: String, motivo: String, estadoDescartado: String)
 
     /**
-     * Incrementa el contador de intentos y guarda el mensaje de error del último intento fallido.
-     * No modifica [enviado] — el Worker decide si reintenta o abandona.
+     * Elimina SMS ya tramitados recibidos antes de [antesDeMs].
+     * Las claves ajenas en CASCADE se llevan sus reenvíos por delante.
+     * Los SMS en estado PENDIENTE no se tocan: aún tienen trabajo que hacer.
      */
-    @Query("""
-        UPDATE sms
-        SET intentos     = intentos + 1,
-            ultimo_error = :error
-        WHERE id = :id
-    """)
-    suspend fun registrarIntento(id: String, error: String)
+    @Query("DELETE FROM sms WHERE estado != :estadoPendiente AND fecha_recepcion < :antesDeMs")
+    suspend fun eliminarTramitadosAnterioresA(antesDeMs: Long, estadoPendiente: String)
 
-    /**
-     * Elimina mensajes ya enviados cuya [fecha_envio] sea anterior a [antesDeMs].
-     * Usar para la limpieza periódica según la política de retención.
-     */
-    @Query("DELETE FROM sms WHERE enviado = 1 AND fecha_envio < :antesDeMs")
-    suspend fun eliminarEnviadosAnterioresA(antesDeMs: Long)
+    /** Elimina todos los registros de la tabla, y con ellos sus reenvíos. */
+    @Query("DELETE FROM sms")
+    suspend fun eliminarTodos()
 
     // ── Lectura reactiva (Flow) ───────────────────────────────────────────────
 
-    /**
-     * Emite la lista completa de SMS cada vez que cambia la tabla, ordenados
-     * por fecha de recepción descendente (más reciente primero).
-     */
+    /** Lista completa, más recientes primero. */
     @Query("SELECT * FROM sms ORDER BY fecha_recepcion DESC")
     fun observarTodos(): Flow<List<SmsEntity>>
 
-    /**
-     * Emite el número de SMS pendientes de envío ([enviado] = false).
-     * Útil para el badge / contador en la UI.
-     */
-    @Query("SELECT COUNT(*) FROM sms WHERE enviado = 0")
-    fun observarContadorPendientes(): Flow<Int>
+    /** SMS recibidos pero aún sin evaluar. Para el indicador de la pantalla de inicio. */
+    @Query("SELECT COUNT(*) FROM sms WHERE estado = :estadoPendiente")
+    fun observarContadorPendientes(estadoPendiente: String): Flow<Int>
 
-    /**
-     * Emite el total de SMS almacenados.
-     */
     @Query("SELECT COUNT(*) FROM sms")
     fun observarContadorTotal(): Flow<Int>
 
     // ── Lectura puntual (suspend) ─────────────────────────────────────────────
 
-    /**
-     * Devuelve un SMS por su [id], o null si no existe.
-     * Usado por los Workers para obtener el payload antes del envío.
-     */
     @Query("SELECT * FROM sms WHERE id = :id")
     suspend fun obtenerPorId(id: String): SmsEntity?
 
     /**
-     * Devuelve todos los SMS cuyo campo [enviado] es false, ordenados por
-     * fecha de recepción ascendente (primero en entrar, primero en salir).
-     * Usado por el [HealthMonitorWorker] para re-encolar mensajes atascados.
+     * SMS pendientes de evaluar, en orden de llegada (FIFO).
+     * Lo consume el rescate de huérfanos: son mensajes que se persistieron pero cuya
+     * evaluación no llegó a completarse.
      */
-    @Query("SELECT * FROM sms WHERE enviado = 0 ORDER BY fecha_recepcion ASC")
-    suspend fun obtenerPendientes(): List<SmsEntity>
+    @Query("SELECT * FROM sms WHERE estado = :estadoPendiente ORDER BY fecha_recepcion ASC")
+    suspend fun obtenerPendientes(estadoPendiente: String): List<SmsEntity>
 
-    /**
-     * Devuelve los [limite] SMS más recientes.
-     * Útil para la pantalla de logs sin cargar toda la tabla.
-     */
+    /** Los [limite] SMS más recientes. */
     @Query("SELECT * FROM sms ORDER BY fecha_recepcion DESC LIMIT :limite")
     suspend fun obtenerUltimos(limite: Int): List<SmsEntity>
-
-    /** Elimina todos los registros de la tabla. */
-    @Query("DELETE FROM sms")
-    suspend fun eliminarTodos()
 }

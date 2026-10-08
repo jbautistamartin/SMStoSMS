@@ -203,7 +203,7 @@ sin coincidencia, orden respetado, `continuar` activo, plantilla con marcadores,
 
 ---
 
-### Fase 3 — Reenvío real por SmsManager · `[ ]`
+### Fase 3 — Reenvío real por SmsManager · `[x]` completada el 7 oct 2026
 
 El corazón del cambio. `SmsDispatchWorker` deja de hablar HTTP y pasa a enviar SMS, conservando
 intacta su tabla de decisiones.
@@ -239,6 +239,55 @@ intacta su tabla de decisiones.
 validar sin gasto real.
 
 **No entra:** las reglas se dan de alta a mano en la base de datos.
+
+#### Resultado real
+
+- `./gradlew test assembleDebug` → **BUILD SUCCESSFUL**. 47 tests, 0 fallos
+  (32 del evaluador + 15 del normalizador de teléfonos).
+- Esquema v1 regenerado y normalizado:
+  `sms` conserva solo `id, telefono, mensaje, fecha_recepcion, estado, motivo_descarte`;
+  los contadores de intentos y errores viven ya solo en `reenvios`.
+  `log_entries` cambia `codigo_http` por `reenvio_id` y `destino`.
+- OkHttp fuera por completo: ni en `libs.versions.toml`, ni en el build, ni en el código.
+
+#### Piezas nuevas
+
+| Fichero | Papel |
+|---------|-------|
+| `data/sms/SmsSender.kt` | Envía por `SmsManager` y **espera** el `sentIntent` |
+| `data/sms/ResultadoEnvio.kt` | Enviado / ErrorTransitorio / ErrorPermanente |
+| `worker/ColaDeEnvios.kt` | Único punto de encolado; lee el backoff de la configuración |
+| `domain/usecase/ProcesarSmsEntranteUseCase.kt` | Protecciones, evaluación, creación de reenvíos y encolado |
+| `domain/rules/NormalizadorTelefono.kt` | Compara números con formatos distintos |
+| `domain/model/EstadoSms.kt` | PENDIENTE / PROCESADO / SIN_REGLA / DESCARTADO |
+
+#### Decisiones tomadas al implementar
+
+1. **La evaluación ocurre en la ingesta, no en el worker.** `SmsIngestionService` llama a
+   `ProcesarSmsEntranteUseCase`, que guarda, protege, evalúa, crea los reenvíos y los encola.
+   El worker queda con una sola responsabilidad: enviar uno.
+2. **Idempotencia sin transacción entre tablas.** Si el proceso muere entre crear los reenvíos
+   y marcar el SMS como PROCESADO, al reprocesarlo se detecta que ya tiene reenvíos y solo se
+   reencolan. Evita duplicar envíos —que aquí cuestan dinero— sin necesidad de abrir una
+   transacción que cruce DAOs.
+3. **El rescate de huérfanos ahora cubre dos tramos:** SMS en PENDIENTE sin evaluar, y
+   reenvíos pendientes sin trabajo vivo en WorkManager.
+4. **`PendingIntent` por parte, con `FLAG_IMMUTABLE`** y acción con UUID por envío, más
+   `RECEIVER_NOT_EXPORTED` al registrar el receptor: ninguna otra app puede falsificar una
+   confirmación de envío, y dos reenvíos simultáneos no se cruzan las respuestas.
+5. **Si una parte de un mensaje multipart falla, el reenvío se reintenta entero**, aceptando un
+   posible duplicado en el destino. Dar por bueno un mensaje truncado es peor.
+6. **`{fecha}` pasa a hora local legible** (`toDisplayString()`) en lugar del ISO-8601 UTC que
+   usaba la versión HTTP: lo lee una persona en su teléfono, no un servidor.
+7. **Arreglado el bug heredado:** `intervaloReintentoSegundos` ya se aplica de verdad, porque
+   `ColaDeEnvios` lo lee de la configuración en lugar de usar una constante.
+
+#### Desviación
+
+**La pantalla de configuración se rehízo aquí, no en la fase 4.** Al quitar OkHttp dejaban de
+compilar `SettingsViewModel`, `SettingsFragment` y `fragment_settings.xml`, que giraban en torno
+a la plantilla de URL y al botón de probar conexión. Ahora tiene protecciones y reintentos. El
+selector de SIM y el panel de prueba de reglas siguen en la fase 4.
 
 ---
 

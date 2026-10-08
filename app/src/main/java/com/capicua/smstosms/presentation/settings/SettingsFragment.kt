@@ -5,23 +5,27 @@
 
 package com.capicua.smstosms.presentation.settings
 
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.capicua.smstosms.R
 import com.capicua.smstosms.data.config.AppConfig
 import com.capicua.smstosms.databinding.FragmentSettingsBinding
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/**
+ * Ajustes generales: protecciones y política de reintentos.
+ *
+ * Las reglas de reenvío no se editan aquí: son una lista ordenada y tienen su propia pantalla.
+ */
 @AndroidEntryPoint
 class SettingsFragment : Fragment() {
 
@@ -45,11 +49,7 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         observarConfiguracion()
-        observarTestEstado()
         configurarBotonGuardar()
-        configurarBotonProbar()
-
-        binding.editTextUrlTemplate.doAfterTextChanged { viewModel.resetearTest() }
     }
 
     private fun observarConfiguracion() {
@@ -57,7 +57,7 @@ class SettingsFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.config.collect { config ->
                     // config es null mientras DataStore no ha emitido su primer valor real;
-                    // esperamos a ese primer valor antes de rellenar los campos.
+                    // esperamos a ese valor antes de rellenar los campos.
                     if (config != null && cargaInicial) {
                         rellenarCampos(config)
                         cargaInicial = false
@@ -67,124 +67,98 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun observarTestEstado() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.testEstado.collect { estado ->
-                    actualizarUiTest(estado)
-                }
-            }
-        }
-    }
-
-    private fun actualizarUiTest(estado: TestConexionEstado) {
-        val progress  = binding.progressTest
-        val resultado = binding.textTestResultado
-
-        when (estado) {
-            TestConexionEstado.Inactivo -> {
-                progress.visibility  = View.GONE
-                resultado.visibility = View.GONE
-            }
-            TestConexionEstado.Cargando -> {
-                progress.visibility  = View.VISIBLE
-                resultado.visibility = View.GONE
-                binding.buttonProbar.isEnabled = false
-            }
-            is TestConexionEstado.Respuesta -> {
-                progress.visibility  = View.GONE
-                resultado.visibility = View.VISIBLE
-                binding.buttonProbar.isEnabled = true
-                val ok = estado.codigoHttp in 200..299
-                resultado.text = if (ok) "✓ HTTP ${estado.codigoHttp}" else "✗ HTTP ${estado.codigoHttp}"
-                resultado.setTextColor(if (ok) Color.parseColor("#4CAF50") else Color.parseColor("#F44336"))
-            }
-            is TestConexionEstado.ErrorRed -> {
-                progress.visibility  = View.GONE
-                resultado.visibility = View.VISIBLE
-                binding.buttonProbar.isEnabled = true
-                resultado.text = "✗ ${estado.detalle}"
-                resultado.setTextColor(Color.parseColor("#F44336"))
-            }
-        }
-    }
-
     private fun rellenarCampos(config: AppConfig) {
-        binding.editTextUrlTemplate.setText(config.urlTemplate)
-        binding.switchAceptarCertsInvalidos.isChecked = config.aceptarCertificadosInvalidos
-        binding.editTextTimeout.setText(config.timeoutSegundos.toString())
+        binding.switchProtegerBucles.isChecked = config.protegerBucles
+        binding.editTextMaxReenviosMinuto.setText(config.maxReenviosPorMinuto.toString())
+        binding.editTextTimeoutEnvio.setText(config.timeoutEnvioSegundos.toString())
         binding.editTextMaxReintentos.setText(config.maxReintentos.toString())
         binding.editTextIntervalo.setText(config.intervaloReintentoSegundos.toString())
     }
 
-    private fun configurarBotonProbar() {
-        binding.buttonProbar.setOnClickListener {
-            val urlTemplate  = binding.editTextUrlTemplate.text?.toString()?.trim() ?: ""
-            val aceptarCerts = binding.switchAceptarCertsInvalidos.isChecked
-            val timeout      = binding.editTextTimeout.text?.toString()?.toIntOrNull() ?: 30
+    private fun configurarBotonGuardar() {
+        binding.buttonGuardar.setOnClickListener {
+            val maxPorMinuto = binding.editTextMaxReenviosMinuto.entero(VALORES.maxReenviosPorMinuto)
+            val timeoutEnvio = binding.editTextTimeoutEnvio.entero(VALORES.timeoutEnvioSegundos)
+            val maxReintentos = binding.editTextMaxReintentos.entero(VALORES.maxReintentos)
+            val intervalo = binding.editTextIntervalo.entero(VALORES.intervaloReintentoSegundos)
 
-            if (urlTemplate.isBlank() || !urlTemplate.contains("{mensaje}")) {
-                Snackbar.make(binding.root, "Configura una URL válida con {mensaje} antes de probar", Snackbar.LENGTH_SHORT).show()
+            if (!validar(maxPorMinuto, timeoutEnvio, maxReintentos, intervalo)) {
                 return@setOnClickListener
             }
 
-            viewModel.probarConexion(
-                AppConfig(urlTemplate = urlTemplate, aceptarCertificadosInvalidos = aceptarCerts, timeoutSegundos = timeout)
+            // La SIM elegida no se toca aquí: su selector llega con la pantalla de reglas.
+            // Conservamos el valor ya guardado para no pisarlo al guardar el resto.
+            val simActual = viewModel.config.value?.subscriptionId ?: AppConfig.SIM_POR_DEFECTO
+
+            viewModel.guardar(
+                AppConfig(
+                    maxReintentos = maxReintentos,
+                    intervaloReintentoSegundos = intervalo,
+                    timeoutEnvioSegundos = timeoutEnvio,
+                    maxReenviosPorMinuto = maxPorMinuto,
+                    protegerBucles = binding.switchProtegerBucles.isChecked,
+                    subscriptionId = simActual
+                )
             )
+            Snackbar.make(binding.root, R.string.settings_guardado, Snackbar.LENGTH_SHORT).show()
         }
     }
 
-    private fun configurarBotonGuardar() {
-        binding.buttonGuardar.setOnClickListener {
-            val urlTemplate  = binding.editTextUrlTemplate.text?.toString()?.trim() ?: ""
-            val aceptarCerts = binding.switchAceptarCertsInvalidos.isChecked
-            val timeout      = binding.editTextTimeout.text?.toString()?.toIntOrNull() ?: 30
-            val maxRetries   = binding.editTextMaxReintentos.text?.toString()?.toIntOrNull() ?: 10
-            val intervalo    = binding.editTextIntervalo.text?.toString()?.toIntOrNull() ?: 30
-
-            if (!validar(urlTemplate, timeout, maxRetries, intervalo)) return@setOnClickListener
-
-            viewModel.guardar(AppConfig(urlTemplate = urlTemplate, aceptarCertificadosInvalidos = aceptarCerts, timeoutSegundos = timeout, maxReintentos = maxRetries, intervaloReintentoSegundos = intervalo))
-            Snackbar.make(binding.root, "Configuración guardada", Snackbar.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun validar(urlTemplate: String, timeout: Int, maxRetries: Int, intervalo: Int): Boolean {
+    private fun validar(
+        maxPorMinuto: Int,
+        timeoutEnvio: Int,
+        maxReintentos: Int,
+        intervalo: Int
+    ): Boolean {
         var valido = true
 
-        if (urlTemplate.isBlank()) {
-            binding.tilUrlTemplate.error = "La plantilla de URL es obligatoria"
-            valido = false
-        } else if (!urlTemplate.startsWith("http://") && !urlTemplate.startsWith("https://")) {
-            binding.tilUrlTemplate.error = "Debe comenzar con http:// o https://"
-            valido = false
-        } else if (!urlTemplate.contains("{mensaje}")) {
-            binding.tilUrlTemplate.error = "Debe contener el marcador {mensaje}"
-            valido = false
-        } else {
-            binding.tilUrlTemplate.error = null
-        }
+        valido = comprobarRango(
+            binding.tilMaxReenviosMinuto, maxPorMinuto, 1, 100,
+            getString(R.string.settings_error_rango, 1, 100)
+        ) && valido
 
-        if (timeout < 5 || timeout > 120) {
-            binding.tilTimeout.error = "Debe estar entre 5 y 120 segundos"
-            valido = false
-        } else binding.tilTimeout.error = null
+        valido = comprobarRango(
+            binding.tilTimeoutEnvio, timeoutEnvio, 10, 300,
+            getString(R.string.settings_error_rango_segundos, 10, 300)
+        ) && valido
 
-        if (maxRetries < 1 || maxRetries > 100) {
-            binding.tilMaxReintentos.error = "Debe estar entre 1 y 100"
-            valido = false
-        } else binding.tilMaxReintentos.error = null
+        valido = comprobarRango(
+            binding.tilMaxReintentos, maxReintentos, 1, 100,
+            getString(R.string.settings_error_rango, 1, 100)
+        ) && valido
 
-        if (intervalo < 5 || intervalo > 3600) {
-            binding.tilIntervalo.error = "Debe estar entre 5 y 3600 segundos"
-            valido = false
-        } else binding.tilIntervalo.error = null
+        valido = comprobarRango(
+            binding.tilIntervalo, intervalo, 5, 3600,
+            getString(R.string.settings_error_rango_segundos, 5, 3600)
+        ) && valido
 
         return valido
     }
 
+    private fun comprobarRango(
+        campo: com.google.android.material.textfield.TextInputLayout,
+        valor: Int,
+        minimo: Int,
+        maximo: Int,
+        mensaje: String
+    ): Boolean = if (valor < minimo || valor > maximo) {
+        campo.error = mensaje
+        false
+    } else {
+        campo.error = null
+        true
+    }
+
+    private fun com.google.android.material.textfield.TextInputEditText.entero(porDefecto: Int): Int =
+        text?.toString()?.trim()?.toIntOrNull() ?: porDefecto
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private companion object {
+        /** Valores por defecto, para no repetirlos cuando un campo se queda vacío. */
+        val VALORES = AppConfig()
     }
 }

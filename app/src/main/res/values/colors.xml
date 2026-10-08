@@ -13,9 +13,12 @@
     <color name="status_pending">#7B5800</color>
     <color name="status_failed">#BA1A1A</color>
     <color name="status_dispatching">#006874</color>
-    <!-- Log entry indicators -->
+    <!-- Indicadores de color por tipo de entrada del registro -->
     <color name="log_recibido">#006874</color>
-    <color name="log_enviado">#186A2E</color>
+    <color name="log_regla">#4A6267</color>
+    <color name="log_reenviado">#186A2E</color>
+    <color name="log_sin_regla">#7B5800</color>
+    <color name="log_bucle">#8A5000</color>
     <color name="log_error">#BA1A1A</color>
     <color name="log_sistema">#7B5800</color>
 </resources>

@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.capicua.smstosms.R
 import com.capicua.smstosms.databinding.ItemSmsBinding
+import com.capicua.smstosms.domain.model.EstadoSms
 import com.capicua.smstosms.domain.model.SmsMessage
 import com.capicua.smstosms.util.toDisplayString
 
@@ -34,12 +35,15 @@ class SmsListAdapter : ListAdapter<SmsMessage, SmsListAdapter.SmsViewHolder>(Dif
             binding.textViewSender.text     = sms.telefono
             binding.textViewBody.text       = sms.mensaje
             binding.textViewReceivedAt.text = sms.fechaRecepcion.toDisplayString()
-            binding.chipStatus.text = if (sms.enviado) {
-                ctx.getString(R.string.status_enviado)
-            } else {
-                ctx.getString(R.string.status_pendiente)
-            }
-            binding.chipStatus.isChecked = sms.enviado
+            binding.chipStatus.text = ctx.getString(
+                when (sms.estado) {
+                    EstadoSms.PENDIENTE  -> R.string.status_pendiente
+                    EstadoSms.PROCESADO  -> R.string.status_procesado
+                    EstadoSms.SIN_REGLA  -> R.string.status_sin_regla
+                    EstadoSms.DESCARTADO -> R.string.status_descartado
+                }
+            )
+            binding.chipStatus.isChecked = sms.estado == EstadoSms.PROCESADO
         }
     }
 

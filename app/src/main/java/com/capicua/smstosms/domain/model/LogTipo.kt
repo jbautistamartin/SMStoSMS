@@ -5,16 +5,26 @@
 
 package com.capicua.smstosms.domain.model
 
+/** Categoría de un evento del registro de auditoría. */
 enum class LogTipo {
-    /** SMS recibido por la SIM y persistido en base de datos local */
+    /** SMS recibido por la SIM y persistido en la base de datos local. */
     SMS_RECIBIDO,
 
-    /** SMS enviado con éxito a la API corporativa (HTTP 2xx) */
-    SMS_ENVIADO,
+    /** Una regla casó con el SMS y se creó su reenvío. */
+    REGLA_APLICADA,
 
-    /** Error transitorio o permanente al intentar enviar un SMS */
+    /** Reenvío confirmado por el operador: todas las partes dieron `RESULT_OK`. */
+    SMS_REENVIADO,
+
+    /** Ninguna regla casó con el SMS. No hay nada que reenviar. */
+    SIN_REGLA,
+
+    /** Reenvío bloqueado por una protección: bucle detectado o límite de frecuencia. */
+    BUCLE_EVITADO,
+
+    /** Error transitorio o permanente al intentar reenviar. */
     ERROR,
 
-    /** Evento del sistema: inicio de app, reboot, health check */
+    /** Evento del sistema: inicio de la app, reinicio del dispositivo, limpieza periódica. */
     SISTEMA
 }

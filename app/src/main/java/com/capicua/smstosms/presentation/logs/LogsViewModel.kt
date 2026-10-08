@@ -84,16 +84,16 @@ class LogsViewModel @Inject constructor(
             .withZone(ZoneId.systemDefault())
 
         val contenido = buildString {
-            appendLine("=== SMStoSMS — Logs exportados ===")
+            appendLine("=== SMStoSMS — Registro exportado ===")
             appendLine("Fecha exportación: ${formatter.format(Instant.now())}")
             appendLine("Total entradas: ${logs.size}")
             appendLine("=".repeat(50))
             appendLine()
             logs.forEach { log ->
                 append("[${formatter.format(log.timestamp)}]")
-                append(" [${log.tipo.name.padEnd(12)}]")
-                log.codigoHttp?.let { append(" [HTTP $it]") }
+                append(" [${log.tipo.name.padEnd(14)}]")
                 log.smsId?.let { append(" [SMS: ${it.take(8)}…]") }
+                log.destino?.let { append(" [→ $it]") }
                 append(" ${log.detalle}")
                 appendLine()
             }

@@ -5,20 +5,13 @@
 
 package com.capicua.smstosms.data.repository
 
-import androidx.work.BackoffPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.capicua.smstosms.data.local.db.dao.SmsDao
 import com.capicua.smstosms.data.local.db.entity.SmsEntity
+import com.capicua.smstosms.domain.model.EstadoSms
 import com.capicua.smstosms.domain.model.SmsMessage
-import com.capicua.smstosms.util.Constants
-import com.capicua.smstosms.worker.SmsDispatchWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,16 +19,15 @@ import javax.inject.Singleton
  * Implementación de [SmsRepository].
  *
  * Responsabilidades:
- * 1. Delegar operaciones de base de datos a [SmsDao].
+ * 1. Delegar las operaciones de base de datos a [SmsDao].
  * 2. Traducir entre [SmsEntity] (capa de datos) y [SmsMessage] (capa de dominio).
- * 3. Gestionar la cola de WorkManager para el despacho de mensajes.
  *
- * Es un [Singleton]: una única instancia comparte la conexión a Room y WorkManager.
+ * Es el único sitio que conoce cómo se representa [EstadoSms] en la base de datos: se guarda
+ * el `name` del enum como texto, igual que los tipos de log.
  */
 @Singleton
 class SmsRepositoryImpl @Inject constructor(
-    private val smsDao: SmsDao,
-    private val workManager: WorkManager
+    private val smsDao: SmsDao
 ) : SmsRepository {
 
     // ── Escritura ─────────────────────────────────────────────────────────────
@@ -44,41 +36,16 @@ class SmsRepositoryImpl @Inject constructor(
         smsDao.insertar(sms.aEntidad())
     }
 
-    override suspend fun marcarComoEnviado(id: String, fechaEnvio: Instant) {
-        smsDao.marcarEnviado(id, fechaEnvio.toEpochMilli())
+    override suspend fun actualizarEstado(id: String, estado: EstadoSms) {
+        smsDao.actualizarEstado(id, estado.name)
     }
 
-    override suspend fun registrarError(id: String, error: String) {
-        smsDao.registrarIntento(id, error)
+    override suspend fun marcarDescartado(id: String, motivo: String) {
+        smsDao.marcarDescartado(id, motivo, EstadoSms.DESCARTADO.name)
     }
 
-    override fun encolarEnvio(smsId: String) {
-        // Sin constraint de red: WorkManager ejecuta el worker en cuanto puede.
-        // Si no hay red en ese momento, OkHttp lanza IOException → Result.retry()
-        // con backoff exponencial. Esto es más fiable que NET_CAPABILITY_INTERNET,
-        // capability que Android no asigna en redes locales o corporativas aunque
-        // el servidor destino sea perfectamente alcanzable.
-        val datos = workDataOf(Constants.WORKER_KEY_SMS_ID to smsId)
-
-        val solicitud = OneTimeWorkRequestBuilder<SmsDispatchWorker>()
-            .setInputData(datos)
-            .setBackoffCriteria(
-                BackoffPolicy.LINEAR,   // reintentos cada ~30 s, sin crecimiento exponencial
-                Constants.WORKER_INITIAL_BACKOFF_SECONDS,
-                TimeUnit.SECONDS
-            )
-            .build()
-
-        // KEEP: si ya existe un worker para este SMS (p. ej. reintento en curso), no lo duplica.
-        workManager.enqueueUniqueWork(
-            "${Constants.WORKER_DISPATCH_TAG}_$smsId",
-            ExistingWorkPolicy.KEEP,
-            solicitud
-        )
-    }
-
-    override suspend fun limpiarEnviadosAntiguos(antesDeEpochMs: Long) {
-        smsDao.eliminarEnviadosAnterioresA(antesDeEpochMs)
+    override suspend fun limpiarTramitadosAntiguos(antesDeEpochMs: Long) {
+        smsDao.eliminarTramitadosAnterioresA(antesDeEpochMs, EstadoSms.PENDIENTE.name)
     }
 
     override suspend fun limpiarTodos() {
@@ -91,7 +58,7 @@ class SmsRepositoryImpl @Inject constructor(
         smsDao.observarTodos().map { lista -> lista.map { it.aDominio() } }
 
     override fun observarContadorPendientes(): Flow<Int> =
-        smsDao.observarContadorPendientes()
+        smsDao.observarContadorPendientes(EstadoSms.PENDIENTE.name)
 
     override fun observarContadorTotal(): Flow<Int> =
         smsDao.observarContadorTotal()
@@ -102,37 +69,26 @@ class SmsRepositoryImpl @Inject constructor(
         smsDao.obtenerPorId(id)?.aDominio()
 
     override suspend fun obtenerPendientes(): List<SmsMessage> =
-        smsDao.obtenerPendientes().map { it.aDominio() }
+        smsDao.obtenerPendientes(EstadoSms.PENDIENTE.name).map { it.aDominio() }
 
     // ── Mappers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Convierte el modelo de dominio a entidad de Room.
-     * Los [Instant] se almacenan como epoch milisegundos (Long).
-     */
+    /** Los [Instant] se almacenan como epoch milisegundos. */
     private fun SmsMessage.aEntidad() = SmsEntity(
         id = id,
         telefono = telefono,
         mensaje = mensaje,
         fechaRecepcion = fechaRecepcion.toEpochMilli(),
-        enviado = enviado,
-        fechaEnvio = fechaEnvio?.toEpochMilli(),
-        intentos = intentos,
-        ultimoError = ultimoError
+        estado = estado.name,
+        motivoDescarte = motivoDescarte
     )
 
-    /**
-     * Convierte una entidad de Room al modelo de dominio.
-     * Los Long de epoch se convierten de vuelta a [Instant].
-     */
     private fun SmsEntity.aDominio() = SmsMessage(
         id = id,
         telefono = telefono,
         mensaje = mensaje,
         fechaRecepcion = Instant.ofEpochMilli(fechaRecepcion),
-        enviado = enviado,
-        fechaEnvio = fechaEnvio?.let { Instant.ofEpochMilli(it) },
-        intentos = intentos,
-        ultimoError = ultimoError
+        estado = EstadoSms.valueOf(estado),
+        motivoDescarte = motivoDescarte
     )
 }

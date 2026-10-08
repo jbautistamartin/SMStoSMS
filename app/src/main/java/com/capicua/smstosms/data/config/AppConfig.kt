@@ -5,56 +5,50 @@
 
 package com.capicua.smstosms.data.config
 
-import java.net.URLEncoder
-
 /**
- * Configuración de la aplicación editada por el operador en la pantalla de Configuración.
- * Se persiste en DataStore<Preferences>.
+ * Ajustes generales de la aplicación, editables en la pantalla de Configuración y
+ * persistidos en DataStore<Preferences>.
  *
- * La URL se define como plantilla con marcadores que se sustituyen por los valores del SMS:
- *
- *   {mensaje}   → texto del SMS                  **OBLIGATORIO**
- *   {telefono}  → número de teléfono del remitente  (opcional)
- *   {fecha}     → timestamp ISO-8601 UTC             (opcional)
- *
- * Los marcadores presentes en la plantilla se sustituyen y URL-encoden automáticamente.
- * Los marcadores ausentes se ignoran; no es necesario incluirlos todos.
- *
- * Ejemplos:
- *   Mínimo:   https://api.empresa.com/sms?msg={mensaje}
- *   Completo: https://api.empresa.com/notify?phone={telefono}&msg={mensaje}&ts={fecha}
+ * Aquí no se decide **a quién** se reenvía nada: eso lo determinan las reglas, que viven en la
+ * base de datos porque son una lista ordenada. Esto son los parámetros que afectan a todos los
+ * reenvíos por igual.
  */
 data class AppConfig(
-    /** Plantilla de URL completa incluyendo query params con marcadores */
-    val urlTemplate: String = "",
-
-    /** Timeout de red en segundos para cada intento HTTP */
-    val timeoutSegundos: Int = 30,
-
-    /** Número máximo de intentos antes de marcar el SMS como fallido permanentemente */
+    /** Número máximo de intentos antes de dar un reenvío por fallido permanentemente. */
     val maxReintentos: Int = 10,
 
-    /** Backoff inicial en segundos entre reintentos (WorkManager aplica backoff exponencial) */
+    /** Espera inicial entre reintentos, en segundos. WorkManager la aplica como backoff. */
     val intervaloReintentoSegundos: Int = 30,
 
-    /** Si true, acepta certificados SSL autofirmados o caducados (usar solo en redes privadas) */
-    val aceptarCertificadosInvalidos: Boolean = false
-) {
     /**
-     * Construye la URL final sustituyendo los marcadores presentes en la plantilla.
-     * Solo se sustituyen los marcadores que aparecen en [urlTemplate]; los ausentes se ignoran.
-     * Cada valor se URL-encodea para uso seguro en query strings.
+     * Segundos que se espera la confirmación del operador (`sentIntent`) antes de dar el
+     * intento por perdido y reintentar. El envío de un SMS es asíncrono: `SmsManager` retorna
+     * al instante y el resultado llega después por broadcast.
      */
-    fun construirUrl(telefono: String, mensaje: String, fecha: String): String =
-        urlTemplate
-            .replace("{telefono}", URLEncoder.encode(telefono, "UTF-8"))
-            .replace("{mensaje}",  URLEncoder.encode(mensaje,  "UTF-8"))
-            .replace("{fecha}",    URLEncoder.encode(fecha,    "UTF-8"))
+    val timeoutEnvioSegundos: Int = 60,
 
     /**
-     * true si la configuración mínima está completa:
-     * - La plantilla no está vacía
-     * - La plantilla contiene {mensaje}, el único marcador obligatorio
+     * Tope de reenvíos creados por minuto. Es el cortafuegos económico del sistema: si una
+     * configuración desafortunada provoca un bucle de reenvíos, esto lo detiene antes de que
+     * se convierta en una factura. El exceso se descarta y queda registrado en el log.
      */
-    fun esValida(): Boolean = urlTemplate.isNotBlank() && urlTemplate.contains("{mensaje}")
+    val maxReenviosPorMinuto: Int = 10,
+
+    /**
+     * Si true, se descartan los SMS cuyo remitente sea uno de los destinos configurados y los
+     * reenvíos dirigidos al propio remitente. Desactivarlo solo tiene sentido en pruebas
+     * controladas.
+     */
+    val protegerBucles: Boolean = true,
+
+    /**
+     * Id de suscripción de la SIM con la que enviar, en dispositivos con más de una.
+     * [SIM_POR_DEFECTO] deja que el sistema elija la SIM de SMS predeterminada.
+     */
+    val subscriptionId: Int = SIM_POR_DEFECTO
+) {
+    companion object {
+        /** La aplicación no fuerza ninguna SIM: envía con la predeterminada del sistema. */
+        const val SIM_POR_DEFECTO = -1
+    }
 }

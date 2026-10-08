@@ -54,7 +54,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // URL and token are configured at runtime via Settings → DataStore, not build-time.
+        // Las reglas de reenvío y los ajustes se configuran en la app, no en el build.
     }
 
     buildTypes {
@@ -124,10 +124,6 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
-
-    // OkHttp
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

@@ -38,14 +38,16 @@ class LogsAdapter : ListAdapter<LogEntry, LogsAdapter.LogViewHolder>(DiffCallbac
             binding.textViewDetalle.text   = log.detalle
             binding.textViewTipo.text      = log.tipo.name
 
-            log.codigoHttp?.let { binding.textViewCodigoHttp.text = "HTTP $it" }
-                ?: run { binding.textViewCodigoHttp.text = "" }
+            binding.textViewDestino.text = log.destino?.let { "→ $it" }.orEmpty()
 
             val (colorRes, iconRes) = when (log.tipo) {
-                LogTipo.SMS_RECIBIDO -> Pair(R.color.log_recibido, android.R.drawable.ic_dialog_info)
-                LogTipo.SMS_ENVIADO  -> Pair(R.color.log_enviado,  android.R.drawable.ic_dialog_email)
-                LogTipo.ERROR        -> Pair(R.color.log_error,    android.R.drawable.ic_dialog_alert)
-                LogTipo.SISTEMA      -> Pair(R.color.log_sistema,  android.R.drawable.ic_menu_info_details)
+                LogTipo.SMS_RECIBIDO   -> Pair(R.color.log_recibido,  android.R.drawable.ic_dialog_info)
+                LogTipo.REGLA_APLICADA -> Pair(R.color.log_regla,     android.R.drawable.ic_menu_sort_by_size)
+                LogTipo.SMS_REENVIADO  -> Pair(R.color.log_reenviado, android.R.drawable.ic_dialog_email)
+                LogTipo.SIN_REGLA      -> Pair(R.color.log_sin_regla, android.R.drawable.ic_menu_close_clear_cancel)
+                LogTipo.BUCLE_EVITADO  -> Pair(R.color.log_bucle,     android.R.drawable.ic_lock_idle_alarm)
+                LogTipo.ERROR          -> Pair(R.color.log_error,     android.R.drawable.ic_dialog_alert)
+                LogTipo.SISTEMA        -> Pair(R.color.log_sistema,   android.R.drawable.ic_menu_info_details)
             }
 
             binding.viewIndicador.setBackgroundColor(ContextCompat.getColor(ctx, colorRes))

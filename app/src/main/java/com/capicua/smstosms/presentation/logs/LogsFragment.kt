@@ -55,7 +55,7 @@ class LogsFragment : Fragment() {
 
         binding.chipTodos.setOnClickListener         { viewModel.aplicarFiltro(null) }
         binding.chipRecibidos.setOnClickListener     { viewModel.aplicarFiltro(LogTipo.SMS_RECIBIDO) }
-        binding.chipEnviados.setOnClickListener      { viewModel.aplicarFiltro(LogTipo.SMS_ENVIADO) }
+        binding.chipReenviados.setOnClickListener    { viewModel.aplicarFiltro(LogTipo.SMS_REENVIADO) }
         binding.chipErrores.setOnClickListener       { viewModel.aplicarFiltro(LogTipo.ERROR) }
         binding.chipSistema.setOnClickListener       { viewModel.aplicarFiltro(LogTipo.SISTEMA) }
     }

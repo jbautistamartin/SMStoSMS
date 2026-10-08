@@ -12,8 +12,12 @@ import androidx.room.PrimaryKey
 
 /**
  * Entidad Room para la tabla de logs de la aplicación.
+ *
  * Índice en [smsId] para consultas rápidas por mensaje.
  * Índice en [timestamp] para ordenar y purgar entradas antiguas.
+ *
+ * [destino] se guarda desnormalizado a propósito: así el registro se lee de principio a fin
+ * sin cruzar con `reenvios`, y sigue siendo legible aunque el reenvío se haya purgado.
  */
 @Entity(
     tableName = "log_entries",
@@ -27,17 +31,21 @@ data class LogEntity(
     @ColumnInfo(name = "id")
     val id: Long = 0,
 
+    /** Nombre de la constante de `LogTipo`. */
     @ColumnInfo(name = "tipo")
     val tipo: String,
 
     @ColumnInfo(name = "sms_id")
     val smsId: String? = null,
 
+    @ColumnInfo(name = "reenvio_id")
+    val reenvioId: String? = null,
+
+    @ColumnInfo(name = "destino")
+    val destino: String? = null,
+
     @ColumnInfo(name = "detalle")
     val detalle: String,
-
-    @ColumnInfo(name = "codigo_http")
-    val codigoHttp: Int? = null,
 
     @ColumnInfo(name = "timestamp")
     val timestamp: Long

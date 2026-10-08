@@ -2,13 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- SMS -->
+    <!-- SMS: recibir los entrantes y enviar los reenvíos -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
 
-    <!-- Network -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Enumerar las SIM para poder elegir con cuál enviar en dispositivos duales -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Telefonía obligatoria: sin SIM la aplicación no tiene nada que hacer -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="true" />
 
     <!-- Background work -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -30,9 +35,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SmsToSms"
-        android:usesCleartextTraffic="true"
-        android:networkSecurityConfig="@xml/network_security_config">
+        android:theme="@style/Theme.SmsToSms">
 
         <activity
             android:name=".MainActivity"

@@ -24,11 +24,13 @@ import timber.log.Timber
  *
  * Responsabilidades:
  * 1. Configurar la navegación por fragmentos (Bottom Navigation + NavController).
- * 2. Solicitar los permisos en tiempo de ejecución necesarios para recibir SMS.
+ * 2. Solicitar los permisos en tiempo de ejecución necesarios para recibir y reenviar SMS.
  *
  * En un dispositivo dedicado estos permisos se pueden pre-conceder vía MDM o ADB:
  *   adb shell pm grant com.capicua.smstosms android.permission.RECEIVE_SMS
  *   adb shell pm grant com.capicua.smstosms android.permission.READ_SMS
+ *   adb shell pm grant com.capicua.smstosms android.permission.SEND_SMS
+ *   adb shell pm grant com.capicua.smstosms android.permission.READ_PHONE_STATE
  *   adb shell pm grant com.capicua.smstosms android.permission.POST_NOTIFICATIONS
  */
 @AndroidEntryPoint
@@ -45,8 +47,11 @@ class MainActivity : AppCompatActivity() {
             Timber.d("Permiso '$permiso': ${if (concedido) "CONCEDIDO" else "DENEGADO"}")
         }
 
-        val smsRecepcionDenegado = resultados[Manifest.permission.RECEIVE_SMS] == false
-        if (smsRecepcionDenegado) {
+        // RECEIVE_SMS y SEND_SMS son los dos imprescindibles: sin el primero no entra nada
+        // y sin el segundo no sale nada. READ_PHONE_STATE solo sirve para elegir SIM.
+        val faltaAlgunoEsencial = resultados[Manifest.permission.RECEIVE_SMS] == false ||
+            resultados[Manifest.permission.SEND_SMS] == false
+        if (faltaAlgunoEsencial) {
             mostrarDialogoPermisoObligatorio()
         }
     }
@@ -94,6 +99,8 @@ class MainActivity : AppCompatActivity() {
     private fun permisosNecesarios(): List<String> = buildList {
         add(Manifest.permission.RECEIVE_SMS)
         add(Manifest.permission.READ_SMS)
+        add(Manifest.permission.SEND_SMS)
+        add(Manifest.permission.READ_PHONE_STATE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -101,13 +108,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun mostrarDialogoPermisoObligatorio() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Permiso obligatorio")
-            .setMessage(
-                "Esta aplicación necesita el permiso para recibir SMS. " +
-                "Sin él la aplicación no puede funcionar. " +
-                "Concédelo en Ajustes → Aplicaciones → SMStoSMS → Permisos."
-            )
-            .setPositiveButton("Entendido", null)
+            .setTitle(R.string.permiso_sms_titulo)
+            .setMessage(R.string.permiso_sms_mensaje)
+            .setPositiveButton(R.string.permiso_entendido, null)
             .show()
     }
 }

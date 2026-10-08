@@ -7,24 +7,36 @@ package com.capicua.smstosms.data.local.db.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Entidad Room que representa un SMS recibido en la base de datos local.
+ * Entidad Room que representa un SMS recibido.
  *
  * Tabla: [sms]
  *
- * Diseño de columnas:
- * - [id]              UUID generado en recepción. PrimaryKey y clave de idempotencia.
- * - [telefono]        Número remitente (formato E.164 cuando sea posible).
- * - [mensaje]         Cuerpo completo del SMS.
- * - [fechaRecepcion]  Epoch milisegundos — instante de recepción en el dispositivo.
- * - [enviado]         false=pendiente de enviar, true=confirmado por la API.
- * - [fechaEnvio]      Epoch milisegundos — instante de confirmación HTTP 2xx. Null si no enviado.
- * - [intentos]        Contador de intentos de envío acumulados.
- * - [ultimoError]     Descripción del último error. Null si no hubo error o fue enviado con éxito.
+ * Es el outbox: la fila se escribe **antes** de intentar cualquier reenvío, de modo que ningún
+ * mensaje se pierde aunque el proceso muera justo después de recibirlo.
+ *
+ * Solo guarda lo que llegó y su estado de tramitación. Los contadores de intentos, los errores
+ * y las fechas de confirmación viven en la tabla `reenvios`, una fila por destino: un mismo SMS
+ * puede reenviarse a varios números y cada envío tiene su propio resultado.
+ *
+ * - [id]              UUID generado en recepción.
+ * - [telefono]        Número remitente tal como llega en la PDU. Puede ser alfanumérico.
+ * - [mensaje]         Cuerpo completo, con los fragmentos multipart concatenados.
+ * - [fechaRecepcion]  Epoch milisegundos, según el centro de mensajería.
+ * - [estado]          Nombre de la constante de `EstadoSms`. Indexado: el rescate de huérfanos
+ *                     consulta los pendientes en cada pasada.
+ * - [motivoDescarte]  Por qué se descartó, cuando el estado es DESCARTADO.
  */
-@Entity(tableName = "sms")
+@Entity(
+    tableName = "sms",
+    indices = [
+        Index(value = ["estado"]),
+        Index(value = ["fecha_recepcion"])
+    ]
+)
 data class SmsEntity(
 
     @PrimaryKey
@@ -40,15 +52,9 @@ data class SmsEntity(
     @ColumnInfo(name = "fecha_recepcion")
     val fechaRecepcion: Long,
 
-    @ColumnInfo(name = "enviado", defaultValue = "0")
-    val enviado: Boolean = false,
+    @ColumnInfo(name = "estado")
+    val estado: String,
 
-    @ColumnInfo(name = "fecha_envio")
-    val fechaEnvio: Long? = null,
-
-    @ColumnInfo(name = "intentos", defaultValue = "0")
-    val intentos: Int = 0,
-
-    @ColumnInfo(name = "ultimo_error")
-    val ultimoError: String? = null
+    @ColumnInfo(name = "motivo_descarte")
+    val motivoDescarte: String? = null
 )

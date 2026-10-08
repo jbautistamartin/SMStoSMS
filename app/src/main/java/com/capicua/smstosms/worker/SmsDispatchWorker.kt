@@ -11,140 +11,143 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.capicua.smstosms.data.config.ConfigDataStore
 import com.capicua.smstosms.data.repository.LogRepository
-import com.capicua.smstosms.data.repository.SmsRepository
+import com.capicua.smstosms.data.repository.ReenvioRepository
+import com.capicua.smstosms.data.sms.ResultadoEnvio
+import com.capicua.smstosms.data.sms.SmsSender
+import com.capicua.smstosms.domain.model.EstadoReenvio
 import com.capicua.smstosms.domain.model.LogEntry
 import com.capicua.smstosms.domain.model.LogTipo
 import com.capicua.smstosms.util.Constants
-import com.capicua.smstosms.util.HttpClientFactory
-import com.capicua.smstosms.util.toIsoString
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import timber.log.Timber
-import java.io.IOException
-import java.net.SocketTimeoutException
 import java.time.Instant
 
 /**
- * Worker que envía un único SMS a la API externa mediante GET.
+ * Worker que reenvía un único [com.capicua.smstosms.domain.model.Reenvio] a su número destino.
  *
- * La URL se construye desde la plantilla configurada en Settings, sustituyendo:
- *   {telefono}, {mensaje}, {fecha} por los valores del SMS (URL-encoded).
+ * Trabaja sobre el id del reenvío, no sobre el del SMS: un mismo mensaje entrante puede tener
+ * varios destinos y cada uno se reintenta por separado.
  *
  * ## Estrategia de reintentos
- * | Resultado            | Acción WorkManager | Estado en BD              |
- * |----------------------|--------------------|---------------------------|
- * | HTTP 2xx             | Result.success()   | enviado=true, fechaEnvio  |
- * | HTTP 4xx (≠ 429)     | Result.failure()   | intentos++, ultimoError   |
- * | HTTP 5xx / 429       | Result.retry()     | intentos++, ultimoError   |
- * | Timeout / IOException| Result.retry()     | intentos++, ultimoError   |
- * | Max reintentos       | Result.failure()   | intentos++, ultimoError   |
+ * | Resultado                            | Acción WorkManager | Estado en BD                |
+ * |--------------------------------------|--------------------|-----------------------------|
+ * | Todas las partes `RESULT_OK`         | `Result.success()` | ENVIADO, fechaEnvio         |
+ * | Sin servicio / radio apagada         | `Result.retry()`   | intentos++, ultimoError     |
+ * | Fallo genérico del operador          | `Result.retry()`   | intentos++, ultimoError     |
+ * | Sin confirmación dentro del plazo    | `Result.retry()`   | intentos++, ultimoError     |
+ * | PDU nula / destino inválido / permiso| `Result.failure()` | FALLIDO, ultimoError        |
+ * | Máximo de reintentos alcanzado       | `Result.failure()` | FALLIDO, ultimoError        |
+ *
+ * ## Idempotencia
+ * Es de cliente, como en la versión HTTP: al principio de cada intento se comprueba el estado
+ * en la base de datos y, si ya está [EstadoReenvio.ENVIADO], se devuelve éxito sin tocar la
+ * radio. Aquí importa más que antes, porque un SMS duplicado cuesta dinero y lo ve una persona.
  */
 @HiltWorker
 class SmsDispatchWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val smsRepository: SmsRepository,
+    private val reenvioRepository: ReenvioRepository,
     private val logRepository: LogRepository,
-    private val okHttpClient: OkHttpClient,
+    private val smsSender: SmsSender,
     private val configDataStore: ConfigDataStore
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val smsId = inputData.getString(Constants.WORKER_KEY_SMS_ID)
+        val reenvioId = inputData.getString(Constants.WORKER_KEY_REENVIO_ID)
             ?: return Result.failure().also {
-                Timber.e("SmsDispatchWorker: sin smsId en inputData")
+                Timber.e("SmsDispatchWorker: sin reenvioId en inputData")
             }
 
         val config = configDataStore.config.first()
 
-        // ── Guardia: max reintentos ───────────────────────────────────────────
-        if (runAttemptCount >= config.maxReintentos) {
-            val error = "Máximo de ${config.maxReintentos} reintentos alcanzado"
-            Timber.w("SmsDispatchWorker[$smsId]: $error")
-            smsRepository.registrarError(smsId, error)
-            logRepository.insertar(logEntry(smsId, LogTipo.ERROR, error))
-            return Result.failure()
-        }
-
-        // ── Guardia: configuración mínima ─────────────────────────────────────
-        if (!config.esValida()) {
-            val error = "Configuración incompleta: plantilla de URL vacía o sin marcador {mensaje}"
-            Timber.e("SmsDispatchWorker[$smsId]: $error")
-            logRepository.insertar(logEntry(smsId, LogTipo.ERROR, error))
-            return Result.failure()
-        }
-
-        // ── Obtener SMS de la BD ──────────────────────────────────────────────
-        val sms = smsRepository.obtenerPorId(smsId)
+        // ── Obtener el reenvío ────────────────────────────────────────────────
+        val reenvio = reenvioRepository.obtenerPorId(reenvioId)
             ?: return Result.failure().also {
-                Timber.e("SmsDispatchWorker[$smsId]: SMS no encontrado en BD")
+                Timber.e("SmsDispatchWorker[$reenvioId]: reenvío no encontrado en BD")
             }
 
         // ── Idempotencia: ya enviado ──────────────────────────────────────────
-        if (sms.enviado) {
-            Timber.d("SmsDispatchWorker[$smsId]: ya enviado, omitiendo")
+        if (reenvio.estado == EstadoReenvio.ENVIADO) {
+            Timber.d("SmsDispatchWorker[$reenvioId]: ya enviado, omitiendo")
             return Result.success()
         }
 
-        Timber.d("SmsDispatchWorker[$smsId]: intento ${runAttemptCount + 1}/${config.maxReintentos}")
+        // ── Fallo permanente previo: no insistir ──────────────────────────────
+        if (reenvio.estado == EstadoReenvio.FALLIDO) {
+            Timber.d("SmsDispatchWorker[$reenvioId]: marcado como fallido, no se reintenta")
+            return Result.failure()
+        }
 
-        val url    = config.construirUrl(sms.telefono, sms.mensaje, sms.fechaRecepcion.toIsoString())
-        val client = HttpClientFactory.crear(okHttpClient, config)
+        // ── Guardia: máximo de reintentos ─────────────────────────────────────
+        if (runAttemptCount >= config.maxReintentos) {
+            val error = "Máximo de ${config.maxReintentos} reintentos alcanzado"
+            Timber.w("SmsDispatchWorker[$reenvioId]: $error")
+            reenvioRepository.marcarComoFallido(reenvioId, error)
+            registrar(LogTipo.ERROR, reenvio.smsId, reenvioId, reenvio.destino, error)
+            return Result.failure()
+        }
 
-        return try {
-            val codigoHttp = withContext(Dispatchers.IO) {
-                client.newCall(Request.Builder().url(url).get().build()).execute().use { it.code }
+        Timber.d(
+            "SmsDispatchWorker[$reenvioId]: intento ${runAttemptCount + 1}/${config.maxReintentos} " +
+                "→ ${reenvio.destino}"
+        )
+
+        val resultado = smsSender.enviar(
+            destino = reenvio.destino,
+            texto = reenvio.textoFinal,
+            subscriptionId = config.subscriptionId,
+            timeoutSegundos = config.timeoutEnvioSegundos
+        )
+
+        return when (resultado) {
+            is ResultadoEnvio.Enviado -> {
+                reenvioRepository.marcarComoEnviado(reenvioId, Instant.now())
+                registrar(
+                    LogTipo.SMS_REENVIADO, reenvio.smsId, reenvioId, reenvio.destino,
+                    "Reenviado a ${reenvio.destino}" +
+                        if (resultado.partes > 1) " en ${resultado.partes} partes" else ""
+                )
+                Timber.i("SmsDispatchWorker[$reenvioId]: reenviado a ${reenvio.destino}")
+                Result.success()
             }
 
-            when {
-                codigoHttp in 200..299 -> {
-                    smsRepository.marcarComoEnviado(smsId, Instant.now())
-                    logRepository.insertar(logEntry(smsId, LogTipo.SMS_ENVIADO, "HTTP $codigoHttp — OK", codigoHttp))
-                    Timber.i("SmsDispatchWorker[$smsId]: enviado correctamente (HTTP $codigoHttp)")
-                    Result.success()
-                }
-                codigoHttp in 400..499 && codigoHttp != 429 -> {
-                    val error = "HTTP $codigoHttp (permanente)"
-                    smsRepository.registrarError(smsId, error)
-                    logRepository.insertar(logEntry(smsId, LogTipo.ERROR, error, codigoHttp))
-                    Timber.e("SmsDispatchWorker[$smsId]: fallo permanente — $error")
-                    Result.failure()
-                }
-                else -> {
-                    val error = "HTTP $codigoHttp (transitorio)"
-                    smsRepository.registrarError(smsId, error)
-                    logRepository.insertar(logEntry(smsId, LogTipo.ERROR, error, codigoHttp))
-                    Timber.w("SmsDispatchWorker[$smsId]: fallo transitorio, reintentando — $error")
-                    Result.retry()
-                }
+            is ResultadoEnvio.ErrorPermanente -> {
+                val error = "Fallo permanente: ${resultado.motivo}"
+                reenvioRepository.marcarComoFallido(reenvioId, error)
+                registrar(LogTipo.ERROR, reenvio.smsId, reenvioId, reenvio.destino, error)
+                Timber.e("SmsDispatchWorker[$reenvioId]: $error")
+                Result.failure()
             }
 
-        } catch (e: SocketTimeoutException) {
-            val error = "Timeout: ${e.message}"
-            smsRepository.registrarError(smsId, error)
-            logRepository.insertar(logEntry(smsId, LogTipo.ERROR, error))
-            Timber.w("SmsDispatchWorker[$smsId]: timeout, reintentando")
-            Result.retry()
-        } catch (e: IOException) {
-            val error = "Red: ${e.message}"
-            smsRepository.registrarError(smsId, error)
-            logRepository.insertar(logEntry(smsId, LogTipo.ERROR, error))
-            Timber.w("SmsDispatchWorker[$smsId]: error de red, reintentando")
-            Result.retry()
-        } catch (e: Exception) {
-            val error = "Inesperado: ${e.javaClass.simpleName}: ${e.message}"
-            smsRepository.registrarError(smsId, error)
-            logRepository.insertar(logEntry(smsId, LogTipo.ERROR, error))
-            Timber.e(e, "SmsDispatchWorker[$smsId]: excepción inesperada, reintentando")
-            Result.retry()
+            is ResultadoEnvio.ErrorTransitorio -> {
+                val error = "Fallo transitorio: ${resultado.motivo}"
+                reenvioRepository.registrarError(reenvioId, error)
+                registrar(LogTipo.ERROR, reenvio.smsId, reenvioId, reenvio.destino, error)
+                Timber.w("SmsDispatchWorker[$reenvioId]: $error, reintentando")
+                Result.retry()
+            }
         }
     }
 
-    private fun logEntry(smsId: String, tipo: LogTipo, detalle: String, codigoHttp: Int? = null) =
-        LogEntry(tipo = tipo, smsId = smsId, detalle = detalle, codigoHttp = codigoHttp, timestamp = Instant.now())
+    private suspend fun registrar(
+        tipo: LogTipo,
+        smsId: String,
+        reenvioId: String,
+        destino: String,
+        detalle: String
+    ) {
+        logRepository.insertar(
+            LogEntry(
+                tipo = tipo,
+                smsId = smsId,
+                reenvioId = reenvioId,
+                destino = destino,
+                detalle = detalle,
+                timestamp = Instant.now()
+            )
+        )
+    }
 }

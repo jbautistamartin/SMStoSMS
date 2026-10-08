@@ -8,23 +8,26 @@ package com.capicua.smstosms.domain.model
 import java.time.Instant
 
 /**
- * Modelo de dominio para una entrada de log.
+ * Modelo de dominio para una entrada del registro de auditoría.
  */
 data class LogEntry(
     val id: Long = 0,
 
-    /** Categoría del evento */
+    /** Categoría del evento. */
     val tipo: LogTipo,
 
-    /** ID del SMS relacionado, null para eventos de sistema */
+    /** Id del SMS entrante relacionado. Null para eventos de sistema. */
     val smsId: String? = null,
 
-    /** Descripción legible del evento */
+    /** Id del reenvío relacionado, cuando el evento afecta a un envío concreto. */
+    val reenvioId: String? = null,
+
+    /** Número destino implicado, para poder leer el log sin cruzar tablas. */
+    val destino: String? = null,
+
+    /** Descripción legible del evento. */
     val detalle: String,
 
-    /** Código HTTP de la respuesta, null si no aplica */
-    val codigoHttp: Int? = null,
-
-    /** Instante en que ocurrió el evento */
+    /** Instante en que ocurrió el evento. */
     val timestamp: Instant
 )

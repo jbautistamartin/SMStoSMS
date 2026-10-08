@@ -10,29 +10,27 @@ import java.time.Instant
 /**
  * Modelo de dominio para un SMS entrante.
  * Representación pura en Kotlin, sin dependencias de Room ni ningún framework.
+ *
+ * Solo describe **lo que llegó** y si ya se ha tramitado. El resultado de cada envío
+ * (intentos, errores, fecha de confirmación) vive en los [Reenvio] asociados, porque un SMS
+ * puede acabar en varios destinos y cada uno tiene su propia suerte.
  */
 data class SmsMessage(
-    /** UUID generado en el momento de la recepción. Clave de idempotencia para la API. */
+    /** UUID generado en el momento de la recepción. */
     val id: String,
 
-    /** Número de teléfono del remitente tal como llega en la PDU. */
+    /** Número de teléfono del remitente tal como llega en la PDU, sin normalizar. */
     val telefono: String,
 
-    /** Texto completo del SMS. */
+    /** Texto completo del SMS, con los fragmentos multipart ya concatenados. */
     val mensaje: String,
 
-    /** Instante en que el dispositivo recibió el SMS. */
+    /** Instante en que el centro de mensajería procesó el SMS. */
     val fechaRecepcion: Instant,
 
-    /** true cuando la API corporativa confirmó la recepción con HTTP 2xx. */
-    val enviado: Boolean = false,
+    /** Situación respecto a la evaluación de reglas. */
+    val estado: EstadoSms = EstadoSms.PENDIENTE,
 
-    /** Instante en que se obtuvo la confirmación de envío. Null si aún no se ha enviado. */
-    val fechaEnvio: Instant? = null,
-
-    /** Número acumulado de intentos de envío realizados. */
-    val intentos: Int = 0,
-
-    /** Descripción del último error ocurrido. Null si nunca hubo error o ya fue enviado. */
-    val ultimoError: String? = null
+    /** Motivo del descarte cuando [estado] es [EstadoSms.DESCARTADO]. Null en el resto. */
+    val motivoDescarte: String? = null
 )

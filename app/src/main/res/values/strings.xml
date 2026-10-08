@@ -6,8 +6,10 @@
     <string name="dashboard_title">SMS Recibidos</string>
     <string name="dashboard_no_messages">Aún no se han recibido mensajes</string>
     <string name="sms_borrar_todos">Borrar</string>
-    <string name="status_enviado">Enviado</string>
     <string name="status_pendiente">Pendiente</string>
+    <string name="status_procesado">Reenviado</string>
+    <string name="status_sin_regla">Sin regla</string>
+    <string name="status_descartado">Descartado</string>
 
     <!-- Logs -->
     <string name="logs_title">Logs del sistema</string>
@@ -17,8 +19,26 @@
 
     <!-- Settings -->
     <string name="settings_title">Configuración</string>
+    <string name="settings_subtitulo">Ajustes que afectan a todos los reenvíos. Las reglas que deciden a qué número va cada SMS tienen su propia pantalla.</string>
     <string name="settings_guardar">Guardar configuración</string>
     <string name="settings_guardado">Configuración guardada</string>
+
+    <string name="settings_seccion_protecciones">Protecciones</string>
+    <string name="settings_proteger_bucles">Evitar bucles de reenvío</string>
+    <string name="settings_proteger_bucles_detalle">Descarta los SMS cuyo remitente sea un destino configurado y los reenvíos dirigidos al propio remitente. Desactívalo solo en pruebas controladas.</string>
+    <string name="settings_max_reenvios">Máximo de reenvíos por minuto</string>
+    <string name="settings_max_reenvios_ayuda">Cortafuegos de coste: el exceso se descarta y queda en el registro. Recomendado: 10</string>
+
+    <string name="settings_seccion_envio">Envío y reintentos</string>
+    <string name="settings_timeout_envio">Espera de confirmación</string>
+    <string name="settings_timeout_envio_ayuda">Tiempo que se espera la respuesta del operador antes de reintentar. Entre 10 y 300 s. Recomendado: 60</string>
+    <string name="settings_max_reintentos">Máximo de reintentos</string>
+    <string name="settings_max_reintentos_ayuda">Entre 1 y 100. Recomendado: 10</string>
+    <string name="settings_intervalo">Intervalo inicial de reintento</string>
+    <string name="settings_intervalo_ayuda">WorkManager aplica el backoff desde este valor. Entre 5 y 3600 s</string>
+
+    <string name="settings_error_rango">Debe estar entre %1$d y %2$d</string>
+    <string name="settings_error_rango_segundos">Debe estar entre %1$d y %2$d segundos</string>
 
     <!-- Navigation -->
     <string name="nav_dashboard">Inicio</string>
@@ -29,8 +49,8 @@
     <!-- About -->
     <string name="about_empresa">Capicua</string>
     <string name="about_autor">José Luis Bautista Martín</string>
-    <string name="about_descripcion">Recibe SMS en este dispositivo y los reenvía automáticamente a una API HTTP mediante peticiones GET configurables.</string>
-    <string name="about_marcadores_titulo">Marcadores de plantilla de URL</string>
+    <string name="about_descripcion">Recibe SMS en este dispositivo y los reenvía automáticamente a otro número de teléfono, según reglas con expresiones regulares sobre el remitente y el texto.</string>
+    <string name="about_marcadores_titulo">Marcadores de la plantilla de reenvío</string>
     <string name="about_marcadores_detalle">{mensaje}   → texto del SMS (obligatorio)\n{telefono}  → número del remitente\n{fecha}     → timestamp ISO-8601 UTC</string>
     <string name="about_licencia">Distribuido bajo licencia GNU LGPL v2.1\nCopyright © 2026 Capicua</string>
 
@@ -39,6 +59,6 @@
 
     <!-- Permissions -->
     <string name="permiso_sms_titulo">Permiso obligatorio</string>
-    <string name="permiso_sms_mensaje">Esta aplicación necesita el permiso para recibir SMS. Sin él la aplicación no puede funcionar. Concédelo en Ajustes → Aplicaciones → SMStoSMS → Permisos.</string>
+    <string name="permiso_sms_mensaje">Esta aplicación necesita permiso para recibir y enviar SMS. Sin ambos no puede reenviar nada. Concédelos en Ajustes → Aplicaciones → SMStoSMS → Permisos.</string>
     <string name="permiso_entendido">Entendido</string>
 </resources>
