@@ -14,6 +14,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.capicua.smstosms.R
 import com.capicua.smstosms.databinding.FragmentDashboardBinding
 import com.capicua.smstosms.presentation.dashboard.adapter.SmsListAdapter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -56,10 +57,24 @@ class DashboardFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.smsList.collect { messages ->
-                        adapter.submitList(messages)
+                    viewModel.smsList.collect { mensajes ->
+                        adapter.submitList(mensajes)
                         binding.textViewEmpty.visibility =
-                            if (messages.isEmpty()) View.VISIBLE else View.GONE
+                            if (mensajes.isEmpty()) View.VISIBLE else View.GONE
+                    }
+                }
+                launch {
+                    viewModel.resumen.collect { resumen ->
+                        binding.textViewResumen.text = getString(
+                            R.string.dashboard_resumen,
+                            resumen.totalSms,
+                            resumen.reenviosPendientes,
+                            resumen.reglasActivas
+                        )
+                        // Sin reglas activas la app recibe y no reenvía: hay que decirlo aquí,
+                        // o parecerá que los envíos fallan.
+                        binding.textViewAvisoSinReglas.visibility =
+                            if (resumen.reglasActivas == 0) View.VISIBLE else View.GONE
                     }
                 }
             }

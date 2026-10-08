@@ -9,7 +9,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.capicua.smstosms.data.local.db.entity.SmsEntity
+import com.capicua.smstosms.data.local.db.relation.SmsConReenviosEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -59,6 +61,17 @@ interface SmsDao {
     /** Lista completa, más recientes primero. */
     @Query("SELECT * FROM sms ORDER BY fecha_recepcion DESC")
     fun observarTodos(): Flow<List<SmsEntity>>
+
+    /**
+     * Lista completa con los reenvíos de cada SMS, más recientes primero.
+     *
+     * `@Transaction` es obligatorio: Room resuelve la relación con dos consultas, y sin la
+     * transacción una escritura concurrente podría dejar un SMS emparejado con los reenvíos
+     * que tenía antes.
+     */
+    @Transaction
+    @Query("SELECT * FROM sms ORDER BY fecha_recepcion DESC")
+    fun observarTodosConReenvios(): Flow<List<SmsConReenviosEntity>>
 
     /** SMS recibidos pero aún sin evaluar. Para el indicador de la pantalla de inicio. */
     @Query("SELECT COUNT(*) FROM sms WHERE estado = :estadoPendiente")

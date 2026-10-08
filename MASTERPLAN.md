@@ -354,7 +354,7 @@ es que una importación futura sepa qué formato está leyendo. Resuelto con `en
 
 ---
 
-### Fase 5 — Inicio y logs al día · `[ ]`
+### Fase 5 — Inicio y logs al día · `[x]` completada el 7 oct 2026
 
 La información que se muestra cambia: ya no hay códigos HTTP, hay destinos y reglas.
 
@@ -367,6 +367,28 @@ La información que se muestra cambia: ya no hay códigos HTTP, hay destinos y r
 en Logs y en el fichero exportado.
 
 **No entra:** rediseño visual. Se mantienen las pestañas y el tema actuales.
+
+#### Resultado real
+
+- `./gradlew test assembleDebug` → **BUILD SUCCESSFUL**, 55 tests y 0 fallos.
+- Cada fila de Inicio muestra remitente, texto, regla aplicada y destinos, con franja de color
+  y chip de estado. Cuando hay varios destinos aparece el desglose «enviados · en curso ·
+  fallidos»; cuando algo falla, el error del destino concreto.
+- Logs gana tres filtros: Reglas, Sin regla y Bucles.
+
+#### Decisiones tomadas al implementar
+
+1. **Una sola consulta con `@Relation`, no dos flujos combinados.** `SmsConReenviosEntity` deja
+   que Room resuelva el SMS y sus reenvíos juntos, con `@Transaction` obligatorio: sin ella una
+   escritura concurrente podría emparejar un SMS con los reenvíos que tenía antes.
+2. **`ResumenSms` agrega el estado en el dominio, no en el adaptador.** El orden de las
+   comprobaciones destaca el problema: un fallo gana a un envío correcto aunque solo afecte a
+   uno de los destinos.
+3. **Aviso fijo cuando no hay ninguna regla activa.** Sin reglas la aplicación recibe y no
+   reenvía, que es exactamente lo que parecería un fallo de envío. Decirlo en la primera
+   pantalla evita el diagnóstico equivocado.
+4. **El estado se codifica dos veces**, franja de color y chip, porque es el dato que se busca
+   al abrir la pantalla.
 
 ---
 

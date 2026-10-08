@@ -6,6 +6,7 @@
 package com.capicua.smstosms.data.repository
 
 import com.capicua.smstosms.domain.model.EstadoSms
+import com.capicua.smstosms.domain.model.SmsConReenvios
 import com.capicua.smstosms.domain.model.SmsMessage
 import kotlinx.coroutines.flow.Flow
 
@@ -48,6 +49,12 @@ interface SmsRepository {
 
     /** Todos los SMS, más recientes primero. Se actualiza al cambiar cualquier fila. */
     fun observarTodos(): Flow<List<SmsMessage>>
+
+    /**
+     * Todos los SMS con sus reenvíos, más recientes primero.
+     * Es lo que consume la pantalla de inicio: el mensaje y lo que se hizo con él.
+     */
+    fun observarTodosConReenvios(): Flow<List<SmsConReenvios>>
 
     /** Número de SMS recibidos y aún sin evaluar. */
     fun observarContadorPendientes(): Flow<Int>

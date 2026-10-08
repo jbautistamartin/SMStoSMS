@@ -6,7 +6,17 @@
     <string name="dashboard_title">SMS Recibidos</string>
     <string name="dashboard_no_messages">Aún no se han recibido mensajes</string>
     <string name="sms_borrar_todos">Borrar</string>
+    <string name="dashboard_resumen">%1$d SMS · %2$d reenvío(s) en curso · %3$d regla(s) activa(s)</string>
+    <string name="dashboard_sin_reglas">No hay ninguna regla activa: los SMS se reciben pero no se reenvían a ningún número. Crea una regla en la pestaña Reglas.</string>
+    <string name="sms_ruta_sin_regla">Ninguna regla casó: no se reenvió</string>
+    <string name="sms_ruta_descartado">Descartado por una protección</string>
+    <string name="sms_ruta_uno">%1$s → %2$s</string>
+    <string name="sms_detalle_error">Error en %1$s: %2$s</string>
+    <string name="sms_detalle_desglose">%1$d enviados · %2$d en curso · %3$d fallidos</string>
+    <string name="sms_detalle_intentos">%1$d intento(s) hasta ahora</string>
     <string name="status_pendiente">Pendiente</string>
+    <string name="status_enviando">Enviando</string>
+    <string name="status_fallido">Fallido</string>
     <string name="status_procesado">Reenviado</string>
     <string name="status_sin_regla">Sin regla</string>
     <string name="status_descartado">Descartado</string>
@@ -15,6 +25,9 @@
     <string name="logs_title">Logs del sistema</string>
     <string name="logs_no_entries">Sin entradas de log</string>
     <string name="logs_limpiar">Limpiar</string>
+    <string name="logs_filtro_reglas">Reglas</string>
+    <string name="logs_filtro_sin_regla">Sin regla</string>
+    <string name="logs_filtro_bucles">Bucles</string>
     <string name="logs_exportar">Exportar</string>
 
     <!-- Settings -->

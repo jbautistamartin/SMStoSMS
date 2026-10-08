@@ -24,4 +24,9 @@
         <item quantity="one">Evaluada %1$d regla activa</item>
         <item quantity="other">Evaluadas %1$d reglas activas</item>
     </plurals>
+
+    <plurals name="sms_ruta_varios">
+        <item quantity="one">%1$d destino: %2$s</item>
+        <item quantity="other">%1$d destinos: %2$s</item>
+    </plurals>
 </resources>
