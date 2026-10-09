@@ -7,6 +7,11 @@
         android:title="@string/nav_dashboard" />
 
     <item
+        android:id="@+id/reglasFragment"
+        android:icon="@android:drawable/ic_menu_sort_by_size"
+        android:title="@string/nav_reglas" />
+
+    <item
         android:id="@+id/logsFragment"
         android:icon="@android:drawable/ic_menu_recent_history"
         android:title="@string/nav_logs" />

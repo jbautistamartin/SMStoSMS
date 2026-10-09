@@ -4,4 +4,29 @@
         <item quantity="one">%d entrada</item>
         <item quantity="other">%d entradas</item>
     </plurals>
+
+    <plurals name="reglas_resumen">
+        <item quantity="one">%1$d regla · %2$d activa</item>
+        <item quantity="other">%1$d reglas · %2$d activas</item>
+    </plurals>
+
+    <plurals name="regla_partes">
+        <item quantity="one">%1$d SMS · %2$d caracteres</item>
+        <item quantity="other">%1$d SMS · %2$d caracteres</item>
+    </plurals>
+
+    <plurals name="probar_veredicto_coincide">
+        <item quantity="one">Casa %1$d regla: se haría 1 reenvío</item>
+        <item quantity="other">Casan %1$d reglas: se harían %1$d reenvíos</item>
+    </plurals>
+
+    <plurals name="probar_reglas_evaluadas">
+        <item quantity="one">Evaluada %1$d regla activa</item>
+        <item quantity="other">Evaluadas %1$d reglas activas</item>
+    </plurals>
+
+    <plurals name="sms_ruta_varios">
+        <item quantity="one">%1$d destino: %2$s</item>
+        <item quantity="other">%1$d destinos: %2$s</item>
+    </plurals>
 </resources>

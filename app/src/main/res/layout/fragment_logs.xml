@@ -61,11 +61,32 @@
                     android:text="Recibidos" />
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_enviados"
+                    android:id="@+id/chip_reenviados"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Enviados" />
+                    android:text="Reenviados" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_reglas"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/logs_filtro_reglas" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_sin_regla"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/logs_filtro_sin_regla" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_bucles"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/logs_filtro_bucles" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_errores"

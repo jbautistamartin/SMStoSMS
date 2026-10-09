@@ -15,42 +15,86 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Configuración"
+            android:text="@string/settings_title"
             android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="8dp" />
 
-        <!-- Sección: Servidor -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Conexión"
+            android:text="@string/settings_subtitulo"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginBottom="24dp" />
+
+        <!-- ── Fiabilidad en segundo plano ─────────────────────────────────
+             Es el primer bloque a propósito: con el Doze activo la aplicación recibe los SMS
+             pero puede tardar horas en reenviarlos, y eso no se nota hasta que importa. -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_seccion_bateria"
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
             android:textColor="?attr/colorPrimary"
             android:layout_marginBottom="8dp" />
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/til_url_template"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_bateria"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:hint="Plantilla de URL"
-            app:helperText="{mensaje} obligatorio · {telefono} y {fecha} opcionales"
-            app:startIconDrawable="@android:drawable/ic_menu_compass">
+            android:layout_marginBottom="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edit_text_url_template"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textUri|textMultiLine"
-                android:minLines="2"
-                android:gravity="top" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/text_view_bateria_estado"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+
+                <TextView
+                    android:id="@+id/text_view_bateria_detalle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_bateria"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/settings_bateria_activar" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp" />
+
+        <!-- ── Protecciones ────────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_seccion_protecciones"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textColor="?attr/colorPrimary"
+            android:layout_marginBottom="8dp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="12dp"
             app:cardElevation="0dp"
             app:strokeColor="?attr/colorOutline"
             app:strokeWidth="1dp">
@@ -71,87 +115,70 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Aceptar certificados inválidos"
+                        android:text="@string/settings_proteger_bucles"
                         android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Permite SSL autofirmado (solo redes privadas)"
+                        android:text="@string/settings_proteger_bucles_detalle"
                         android:textAppearance="@style/TextAppearance.Material3.BodySmall"
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
                 </LinearLayout>
 
                 <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_aceptar_certs_invalidos"
+                    android:id="@+id/switch_proteger_bucles"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Botón de prueba de conexión -->
-        <LinearLayout
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_max_reenvios_minuto"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="16dp"
+            android:hint="@string/settings_max_reenvios"
+            app:helperText="@string/settings_max_reenvios_ayuda">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_probar"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_text_max_reenvios_minuto"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Probar conexión" />
+                android:inputType="number"
+                android:imeOptions="actionNext"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-            <ProgressBar
-                android:id="@+id/progress_test"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="12dp"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/text_test_resultado"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="12dp"
-                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                android:visibility="gone" />
-
-        </LinearLayout>
-
-        <!-- Divider -->
         <com.google.android.material.divider.MaterialDivider
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp" />
 
-        <!-- Sección: Reintentos -->
+        <!-- ── Envío y reintentos ──────────────────────────────────────────── -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Reintentos"
+            android:text="@string/settings_seccion_envio"
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
             android:textColor="?attr/colorPrimary"
             android:layout_marginBottom="8dp" />
 
         <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/til_timeout"
+            android:id="@+id/til_timeout_envio"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            android:hint="Timeout de red (segundos)"
-            app:helperText="Entre 5 y 120 segundos. Recomendado: 30"
+            android:hint="@string/settings_timeout_envio"
+            app:helperText="@string/settings_timeout_envio_ayuda"
             app:suffixText="s">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edit_text_timeout"
+                android:id="@+id/edit_text_timeout_envio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="number"
@@ -165,8 +192,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            android:hint="Máximo de reintentos"
-            app:helperText="Entre 1 y 100. Recomendado: 10">
+            android:hint="@string/settings_max_reintentos"
+            app:helperText="@string/settings_max_reintentos_ayuda">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/edit_text_max_reintentos"
@@ -183,8 +210,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
-            android:hint="Intervalo inicial de reintento (segundos)"
-            app:helperText="WorkManager aplica backoff exponencial desde este valor"
+            android:hint="@string/settings_intervalo"
+            app:helperText="@string/settings_intervalo_ayuda"
             app:suffixText="s">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -196,11 +223,51 @@
                 android:singleLine="true" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- ── SIM de envío: solo visible en dispositivos con más de una ──── -->
+        <LinearLayout
+            android:id="@+id/layout_sim"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_seccion_sim"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textColor="?attr/colorPrimary"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_sim"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:hint="@string/settings_sim"
+                app:helperText="@string/settings_sim_ayuda">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/dropdown_sim"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:editable="false" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_guardar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Guardar configuración"
+            android:text="@string/settings_guardar"
             android:layout_marginTop="8dp" />
 
     </LinearLayout>
