@@ -480,11 +480,13 @@ Las seis fases de la migración están completas: la aplicación recibe SMS y lo
 número —o de vuelta al propio remitente— según reglas con expresiones regulares, con protección
 antibucle, confirmación real de envío y registro de auditoría.
 
-**La fase 7 está abierta.** Es la fase de pruebas en dispositivo real y correcciones, y arrancó
-el 8 oct 2026 con la primera instalación en un teléfono. No tiene un alcance cerrado por
-adelantado a propósito: lo que entra en ella lo decide lo que falle al usar la aplicación. Se
-cierra cuando el circuito completo funcione contra una red de operador y no queden síntomas
-abiertos.
+**La fase 7 se cierra con la publicación de la v1.0.0** el 8 oct 2026. Fue la fase de pruebas en
+dispositivo real: dos rondas, cinco fallos corregidos —tres de ellos bloqueantes y ninguno
+detectable desde un build— y una función nueva pedida al usar la aplicación.
+
+Lo que la cierra es que la interfaz entera se ha usado en un teléfono: las cinco pantallas, el
+alta y edición de reglas, el panel de prueba y la exención de batería. Lo que **no** cubre, y
+queda para una 1.0.1, es el circuito completo contra una red de operador con dos teléfonos.
 
 | Fase | Estado | Commit |
 |------|--------|--------|
@@ -494,7 +496,7 @@ abiertos.
 | 4 · Pantalla de reglas | Completada | `dee7db6` |
 | 5 · Inicio y logs | Completada | `0baf067` |
 | 6 · Documentación y release | Completada | `67d567c` |
-| **7 · Pruebas en dispositivo y correcciones** | **Abierta** | rondas 1-2 sin commit |
+| **7 · Pruebas en dispositivo y correcciones** | Completada | `v1.0.0` |
 
 ---
 
@@ -585,9 +587,13 @@ una fase de interfaz como completada exige haber mirado la pantalla.
 1. **Seguir la fase 7**, que la ronda 1 solo empezó. Queda el circuito completo contra una red
    de operador: SIM → regla → `SmsManager` → teléfono destino, con dos teléfonos y las reglas
    reordenadas, más exportar/importar de ida y vuelta.
-2. **Firmar el APK de release.** Añadir las cuatro claves a `local.properties` y recompilar.
-   Esta copia de trabajo no tiene el fichero, así que el APK sale sin firmar.
-3. **Etiquetar `v1.0.0`** y empujar al repositorio nuevo. No hay etiquetas ni remoto configurado.
+2. ~~**Firmar el APK de release.**~~ Hecho el 8 oct 2026: `local.properties` y el almacén se
+   heredaron de SMSGateway, copiados al proyecto como `smstosms-release.jks`. Es la **misma
+   clave** firmando dos `applicationId` distintos, lo que es válido e implica que cualquier
+   actualización futura de SMStoSMS tendrá que usar ese almacén. Comprobado con `apksigner`:
+   esquema v2, `CN=José Luis Bautista Martín, O=Capicua`.
+3. ~~**Etiquetar `v1.0.0`** y publicar.~~ Hecho el 8 oct 2026: etiqueta `v1.0.0` y release en
+   GitHub con el APK firmado.
 4. **Fase 8, si interesa:** destino extraído de un grupo de captura de la regex, reglas con
    ventana horaria, y tests instrumentados de Room y del worker.
 

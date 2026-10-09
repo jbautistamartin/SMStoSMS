@@ -4,6 +4,11 @@ Aplicación Android que convierte un dispositivo con SIM en un **reenviador de S
 mensajes que llegan a su número y los reenvía automáticamente a otro teléfono, según reglas con
 expresiones regulares sobre el remitente y el texto.
 
+**Versión actual: [v1.0.0](https://github.com/jbautistamartin/SMStoSMS/releases/tag/v1.0.0)** —
+descarga el APK firmado desde la [página de releases](https://github.com/jbautistamartin/SMStoSMS/releases).
+No está en Google Play: `SEND_SMS` es un permiso restringido y su publicación exige una
+declaración aprobada.
+
 ---
 
 ## Para qué sirve
@@ -101,7 +106,26 @@ No hay ninguna dependencia de red: la aplicación no necesita internet y no decl
 
 ---
 
-## Compilar e instalar
+## Instalar la versión publicada
+
+La vía corta si no vas a tocar el código:
+
+1. Descarga `smstosms-1.0.0.apk` de la
+   [release v1.0.0](https://github.com/jbautistamartin/SMStoSMS/releases/tag/v1.0.0).
+2. Pásalo al teléfono e instálalo, aceptando «instalar de orígenes desconocidos» cuando lo pida.
+3. Concede los permisos que la app solicita al arrancar.
+4. **Ajustes → Fiabilidad en segundo plano → Desactivar ahorro de batería.** Sin esto el modo
+   Doze puede retrasar los reenvíos horas con la pantalla apagada.
+
+Por ADB, `adb install smstosms-1.0.0.apk`.
+
+> El APK está firmado con la clave de Capicua. Las futuras actualizaciones se firman con la
+> misma: un APK de otra procedencia no se instalará encima, habrá que desinstalar primero y se
+> perderán las reglas. Expórtalas antes desde **Reglas → ⋮ → Exportar**.
+
+---
+
+## Compilar e instalar desde el código
 
 ### 1. Compilar
 
