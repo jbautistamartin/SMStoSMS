@@ -92,11 +92,18 @@ class ReglasAdapter(
                     add(ctx.getString(R.string.reglas_criterio_mensaje, it))
                 }
             }
-            return if (partes.isEmpty()) {
-                ctx.getString(R.string.reglas_criterio_todo)
-            } else {
-                partes.joinToString("  ·  ")
+            if (partes.isEmpty()) {
+                // Sin criterios la regla casa con todo, y entonces decir que no distingue
+                // mayúsculas no informa de nada: no hay nada que comparar.
+                return ctx.getString(R.string.reglas_criterio_todo)
             }
+
+            val sufijo = if (regla.ignorarMayusculas) {
+                "  ·  " + ctx.getString(R.string.reglas_criterio_sin_mayusculas)
+            } else {
+                ""
+            }
+            return partes.joinToString("  ·  ") + sufijo
         }
     }
 

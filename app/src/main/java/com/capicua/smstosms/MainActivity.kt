@@ -7,11 +7,16 @@ package com.capicua.smstosms
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.capicua.smstosms.databinding.ActivityMainBinding
@@ -24,7 +29,9 @@ import timber.log.Timber
  *
  * Responsabilidades:
  * 1. Configurar la navegación por fragmentos (Bottom Navigation + NavController).
- * 2. Solicitar los permisos en tiempo de ejecución necesarios para recibir y reenviar SMS.
+ * 2. Repartir los insets del sistema, porque con `targetSdk 35` Android 15 dibuja la ventana
+ *    de borde a borde y no hay forma de desactivarlo.
+ * 3. Solicitar los permisos en tiempo de ejecución necesarios para recibir y reenviar SMS.
  *
  * En un dispositivo dedicado estos permisos se pueden pre-conceder vía MDM o ADB:
  *   adb shell pm grant com.capicua.smstosms android.permission.RECEIVE_SMS
@@ -63,8 +70,58 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        configurarInsets()
+        configurarIconosDeBarras()
         configurarNavegacion()
         verificarYSolicitarPermisos()
+    }
+
+    // ── Insets ────────────────────────────────────────────────────────────────
+
+    /**
+     * Reparte los insets del sistema entre la raíz y la barra inferior.
+     *
+     * Con `targetSdk 35` Android 15 ignora `fitsSystemWindows` y dibuja siempre de borde a
+     * borde: sin esto, el recorte de la cámara se come la cabecera de cada pantalla y la barra
+     * de navegación del sistema queda **encima** del Bottom Navigation, que deja de poder
+     * pulsarse. Eso es lo que hacía que no se pudiera salir de las pantallas que no están en
+     * la barra inferior.
+     *
+     * Se usa `systemBars or displayCutout` porque en horizontal el recorte cae en un lateral,
+     * donde no hay ninguna barra de sistema que lo cubra.
+     */
+    private fun configurarInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { raiz, insets ->
+            val barras = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            raiz.updatePadding(left = barras.left, top = barras.top, right = barras.right)
+            // El padding inferior va en la barra, no en la raíz: así el fondo de la barra sigue
+            // llegando hasta el borde de la pantalla y solo su contenido se aparta.
+            binding.bottomNavigation.updatePadding(bottom = barras.bottom)
+            insets
+        }
+    }
+
+    /**
+     * Pide iconos oscuros en las barras del sistema cuando el tema es claro.
+     *
+     * Es la otra mitad del borde a borde: al dibujar **bajo** la barra de estado, el fondo que
+     * hay detrás de la hora y los iconos de señal pasa a ser el de la aplicación, y el sistema
+     * por sí solo mantiene los iconos claros. Sobre el fondo casi blanco del tema eso deja la
+     * barra de estado ilegible, que es justo como se veía en el primer teléfono.
+     *
+     * Se consulta el modo noche en lugar de fijarlo a `true` porque el tema es `DayNight`: si
+     * algún día el fondo se vuelve oscuro, los iconos tienen que volver a ser claros solos.
+     */
+    private fun configurarIconosDeBarras() {
+        val esModoNoche = resources.configuration.uiMode and
+            Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+
+        WindowCompat.getInsetsController(window, binding.root).apply {
+            isAppearanceLightStatusBars = !esModoNoche
+            isAppearanceLightNavigationBars = !esModoNoche
+        }
     }
 
     // ── Navegación ────────────────────────────────────────────────────────────

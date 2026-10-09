@@ -31,6 +31,7 @@ class EvaluadorDeReglasTest {
         nombre: String = "Regla $id",
         regexTelefono: String? = null,
         regexMensaje: String? = null,
+        ignorarMayusculas: Boolean = false,
         destino: String = "+34600000001",
         plantilla: String = Regla.PLANTILLA_POR_DEFECTO,
         activa: Boolean = true,
@@ -41,6 +42,7 @@ class EvaluadorDeReglasTest {
         nombre = nombre,
         regexTelefono = regexTelefono,
         regexMensaje = regexMensaje,
+        ignorarMayusculas = ignorarMayusculas,
         destino = destino,
         plantilla = plantilla,
         activa = activa,
@@ -373,6 +375,146 @@ class EvaluadorDeReglasTest {
 
         assertNotNull(motivo)
         assertTrue(motivo!!.isNotBlank())
+    }
+
+    // ── Ignorar mayúsculas ───────────────────────────────────────────────────
+
+    @Test
+    fun `por defecto las expresiones distinguen mayusculas`() {
+        val resultado = evaluar(
+            listOf(regla(regexMensaje = "hola")),
+            mensaje = "HOLA que tal"
+        )
+
+        assertFalse(resultado.hayCoincidencias)
+    }
+
+    @Test
+    fun `con ignorarMayusculas el patron del mensaje casa en cualquier caja`() {
+        val resultado = evaluar(
+            listOf(regla(regexMensaje = "hola", ignorarMayusculas = true)),
+            mensaje = "HOLA que tal"
+        )
+
+        assertTrue(resultado.hayCoincidencias)
+    }
+
+    @Test
+    fun `ignorarMayusculas se aplica tambien al patron del remitente`() {
+        val resultado = evaluar(
+            listOf(regla(regexTelefono = "banco", ignorarMayusculas = true)),
+            telefono = "BANCO"
+        )
+
+        assertTrue(resultado.hayCoincidencias)
+    }
+
+    @Test
+    fun `ignorarMayusculas afecta a los dos criterios a la vez`() {
+        val resultado = evaluar(
+            listOf(
+                regla(regexTelefono = "banco", regexMensaje = "codigo", ignorarMayusculas = true)
+            ),
+            telefono = "BANCO",
+            mensaje = "Tu CODIGO es 4821"
+        )
+
+        assertTrue(resultado.hayCoincidencias)
+    }
+
+    @Test
+    fun `ignorarMayusculas no afecta a una regla que no lo activa`() {
+        // Dos reglas con el mismo patrón: solo casa la que lo pide. Confirma que la opción
+        // es por regla y no un ajuste global del evaluador.
+        val resultado = evaluar(
+            listOf(
+                regla(id = 1, orden = 0, regexMensaje = "hola", ignorarMayusculas = false),
+                regla(id = 2, orden = 1, regexMensaje = "hola", ignorarMayusculas = true)
+            ),
+            mensaje = "HOLA"
+        )
+
+        assertEquals("Regla 2", resultado.coincidencias.single().nombreRegla)
+    }
+
+    @Test
+    fun `ignorarMayusculas convive con el modificador (?i) escrito a mano`() {
+        val resultado = evaluar(
+            listOf(regla(regexMensaje = "(?i)hola", ignorarMayusculas = true)),
+            mensaje = "HoLa"
+        )
+
+        assertTrue(resultado.hayCoincidencias)
+    }
+
+    @Test
+    fun `ignorarMayusculas no convierte un patron roto en valido`() {
+        val resultado = evaluar(listOf(regla(regexMensaje = "[a-", ignorarMayusculas = true)))
+
+        assertFalse(resultado.hayCoincidencias)
+        assertEquals(1, resultado.reglasInvalidas.size)
+    }
+
+    // ── Destino: contestar al remitente ──────────────────────────────────────
+
+    @Test
+    fun `el marcador telefono en el destino resuelve al remitente`() {
+        val resultado = evaluar(
+            listOf(regla(destino = "{telefono}")),
+            telefono = "+34611111111"
+        )
+
+        val coincidencia = resultado.coincidencias.single()
+        assertEquals("+34611111111", coincidencia.destino)
+        assertTrue(coincidencia.respondeAlRemitente)
+    }
+
+    @Test
+    fun `un destino fijo no se marca como respuesta al remitente`() {
+        val coincidencia = evaluar(listOf(regla(destino = "+34600000001")))
+            .coincidencias.single()
+
+        assertEquals("+34600000001", coincidencia.destino)
+        assertFalse(coincidencia.respondeAlRemitente)
+    }
+
+    @Test
+    fun `el destino solo resuelve el marcador de telefono`() {
+        // {mensaje} y {fecha} no tienen sentido como destino: dejarlos sin resolver impide que
+        // el cuerpo del SMS influya en a dónde se envía algo.
+        val coincidencia = evaluar(
+            listOf(regla(destino = "{mensaje}")),
+            mensaje = "+34699999999"
+        ).coincidencias.single()
+
+        assertEquals("{mensaje}", coincidencia.destino)
+        assertFalse(coincidencia.respondeAlRemitente)
+    }
+
+    @Test
+    fun `contestar a un remitente alfanumerico deja el destino sin digitos`() {
+        // El evaluador no decide si se puede enviar; solo resuelve. Quien tramita el SMS
+        // comprueba después que el destino sea enviable.
+        val coincidencia = evaluar(
+            listOf(regla(destino = "{telefono}")),
+            telefono = "BANCO"
+        ).coincidencias.single()
+
+        assertEquals("BANCO", coincidencia.destino)
+        assertTrue(coincidencia.respondeAlRemitente)
+        assertFalse(NormalizadorTelefono.esDestinoEnviable(coincidencia.destino))
+    }
+
+    @Test
+    fun `respondeAlRemitente reconoce el marcador para la validacion del formulario`() {
+        assertTrue(evaluador.respondeAlRemitente("{telefono}"))
+        assertFalse(evaluador.respondeAlRemitente("+34600000001"))
+        assertFalse(evaluador.respondeAlRemitente(null))
+    }
+
+    @Test
+    fun `resolverDestino recorta los espacios alrededor del marcador`() {
+        assertEquals("+34600000001", evaluador.resolverDestino(" {telefono} ", "+34600000001"))
     }
 
     // ── resolverPlantilla como API pública ────────────────────────────────────

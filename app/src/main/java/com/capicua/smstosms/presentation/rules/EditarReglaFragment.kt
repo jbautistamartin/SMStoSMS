@@ -20,6 +20,7 @@ import androidx.navigation.fragment.navArgs
 import com.capicua.smstosms.R
 import com.capicua.smstosms.databinding.FragmentEditarReglaBinding
 import com.capicua.smstosms.domain.model.Regla
+import com.capicua.smstosms.domain.rules.EvaluadorDeReglas
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -54,6 +55,8 @@ class EditarReglaFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.buttonVolver.setOnClickListener { findNavController().navigateUp() }
+
         val esNueva = args.reglaId == EditarReglaViewModel.NUEVA
         binding.textViewTitulo.setText(
             if (esNueva) R.string.regla_titulo_nueva else R.string.regla_titulo_editar
@@ -69,12 +72,27 @@ class EditarReglaFragment : Fragment() {
         viewModel.cargar(args.reglaId)
 
         configurarValidacionEnVivo()
+        configurarAtajoRemitente()
         configurarBotonGuardar()
         observarRegla()
         observarErrores()
         observarGuardado()
 
         actualizarPrevisualizacion()
+    }
+
+    /**
+     * Rellena el destino con el marcador que contesta al remitente.
+     *
+     * El marcador se podría teclear a mano, pero solo si se sabe que existe; el botón es lo que
+     * convierte «devolver el SMS a quien lo mandó» en algo que se encuentra sin leer la
+     * documentación.
+     */
+    private fun configurarAtajoRemitente() {
+        binding.buttonDestinoRemitente.setOnClickListener {
+            binding.editTextDestino.setText(EvaluadorDeReglas.MARCADOR_TELEFONO)
+            binding.tilDestino.error = null
+        }
     }
 
     // ── Validación en vivo ────────────────────────────────────────────────────
@@ -171,6 +189,7 @@ class EditarReglaFragment : Fragment() {
         binding.editTextNombre.setText(regla.nombre)
         binding.editTextRegexTelefono.setText(regla.regexTelefono.orEmpty())
         binding.editTextRegexMensaje.setText(regla.regexMensaje.orEmpty())
+        binding.switchIgnorarMayusculas.isChecked = regla.ignorarMayusculas
         binding.editTextDestino.setText(regla.destino)
         binding.editTextPlantilla.setText(regla.plantilla)
         binding.switchActiva.isChecked = regla.activa
@@ -195,6 +214,7 @@ class EditarReglaFragment : Fragment() {
             ?.takeIf { it.isNotEmpty() },
         regexMensaje = binding.editTextRegexMensaje.text?.toString()?.trim()
             ?.takeIf { it.isNotEmpty() },
+        ignorarMayusculas = binding.switchIgnorarMayusculas.isChecked,
         destino = binding.editTextDestino.text?.toString()?.trim().orEmpty(),
         plantilla = binding.editTextPlantilla.text?.toString()?.trim().orEmpty(),
         activa = binding.switchActiva.isChecked,

@@ -11,6 +11,7 @@ import com.capicua.smstosms.data.repository.ReglaRepository
 import com.capicua.smstosms.data.sms.SmsSender
 import com.capicua.smstosms.domain.model.Regla
 import com.capicua.smstosms.domain.rules.EvaluadorDeReglas
+import com.capicua.smstosms.domain.rules.NormalizadorTelefono
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,7 +101,10 @@ class EditarReglaViewModel @Inject constructor(
         regexMensaje = evaluador.validarPatron(regla.regexMensaje),
         destino = when {
             regla.destino.isBlank() -> "El número destino es obligatorio"
-            regla.destino.count { it.isDigit() } < MINIMO_DIGITOS_DESTINO ->
+            // {telefono} como destino significa «contesta a quien me escribió»: no es un
+            // número y no se puede validar como tal.
+            evaluador.respondeAlRemitente(regla.destino) -> null
+            regla.destino.count { it.isDigit() } < NormalizadorTelefono.DIGITOS_MINIMOS_DESTINO ->
                 "No parece un número de teléfono"
             else -> null
         },
@@ -110,11 +114,5 @@ class EditarReglaViewModel @Inject constructor(
     companion object {
         /** Id que indica que se está creando una regla, no editando una existente. */
         const val NUEVA = 0L
-
-        /**
-         * Dígitos mínimos para aceptar un destino. Un número corto de servicio tiene 4-5, así
-         * que se exige poco a propósito: validar de más impediría usar números especiales.
-         */
-        private const val MINIMO_DIGITOS_DESTINO = 4
     }
 }

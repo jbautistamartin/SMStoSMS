@@ -21,12 +21,13 @@ import com.capicua.smstosms.R
 import com.capicua.smstosms.data.config.AppConfig
 import com.capicua.smstosms.data.sms.SimDisponible
 import com.capicua.smstosms.databinding.FragmentSettingsBinding
+import com.capicua.smstosms.util.OptimizacionBateria
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
- * Ajustes generales: protecciones y política de reintentos.
+ * Ajustes generales: exención de batería, protecciones y política de reintentos.
  *
  * Las reglas de reenvío no se editan aquí: son una lista ordenada y tienen su propia pantalla.
  */
@@ -59,8 +60,19 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         configurarSelectorSim()
+        configurarBateria()
         observarConfiguracion()
         configurarBotonGuardar()
+    }
+
+    /**
+     * El estado de la exención se refresca al volver a la pantalla porque se concede **fuera**
+     * de la aplicación: el usuario sale a Ajustes del sistema y vuelve, y lo que tiene que ver
+     * al volver es el estado nuevo, no el que había cuando se fue.
+     */
+    override fun onResume() {
+        super.onResume()
+        pintarEstadoBateria()
     }
 
     /**
@@ -87,6 +99,50 @@ class SettingsFragment : Fragment() {
         binding.dropdownSim.setOnItemClickListener { _, _, posicion, _ ->
             simElegida = if (posicion == 0) AppConfig.SIM_POR_DEFECTO else sims[posicion - 1].subscriptionId
         }
+    }
+
+    // ── Exención de batería ───────────────────────────────────────────────────
+
+    private fun configurarBateria() {
+        binding.buttonBateria.setOnClickListener {
+            if (!OptimizacionBateria.abrirAjuste(requireContext())) {
+                Snackbar.make(
+                    binding.root,
+                    R.string.settings_bateria_sin_pantalla,
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    /**
+     * Pinta el estado actual de la exención.
+     *
+     * Cuando ya está concedida el botón se queda, pero como acción secundaria: sirve para
+     * revisarlo, y algunos fabricantes revocan la exención por su cuenta tras una actualización.
+     */
+    private fun pintarEstadoBateria() {
+        val exenta = OptimizacionBateria.estaExenta(requireContext())
+
+        binding.textViewBateriaEstado.setText(
+            if (exenta) R.string.settings_bateria_ok else R.string.settings_bateria_pendiente
+        )
+        binding.textViewBateriaEstado.setTextColor(
+            resources.getColor(
+                if (exenta) R.color.status_delivered else R.color.status_pending,
+                null
+            )
+        )
+        binding.textViewBateriaDetalle.setText(
+            if (exenta) {
+                R.string.settings_bateria_ok_detalle
+            } else {
+                R.string.settings_bateria_pendiente_detalle
+            }
+        )
+        binding.buttonBateria.setText(
+            if (exenta) R.string.settings_bateria_revisar else R.string.settings_bateria_activar
+        )
     }
 
     private fun observarConfiguracion() {

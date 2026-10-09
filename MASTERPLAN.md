@@ -282,7 +282,16 @@ validar sin gasto real.
 7. **Arreglado el bug heredado:** `intervaloReintentoSegundos` ya se aplica de verdad, porque
    `ColaDeEnvios` lo lee de la configuración en lugar de usar una constante.
 
-#### Desviación
+#### Desviaciones
+
+**La protección «nunca reenviar al número de la propia SIM» no se implementó.** En su lugar
+quedó «el destino de una regla es el propio remitente», que es la que está en el código y en la
+documentación. No es una pérdida: leer el número propio exige `getLine1Number()`, que desde
+Android 11 necesita `READ_PHONE_NUMBERS` y que la mayoría de operadores devuelven vacío de todas
+formas. Y el caso que preocupaba —configurar tu propio número como destino— lo cubre la
+protección 1: el SMS que vuelve tiene como remitente un destino configurado y se descarta. La
+diferencia es que se detecta al volver, no al guardar la regla, así que se gasta un SMS antes de
+cortarlo.
 
 **La pantalla de configuración se rehízo aquí, no en la fase 4.** Al quitar OkHttp dejaban de
 compilar `SettingsViewModel`, `SettingsFragment` y `fragment_settings.xml`, que giraban en torno
@@ -465,11 +474,17 @@ usar anclas sin barras invertidas, o herramientas de edición directa.
 
 ---
 
-## 7. Estado final
+## 7. Estado
 
-Las seis fases están completas. La aplicación recibe SMS y los reenvía a otro número según
-reglas con expresiones regulares, con protección antibucle, confirmación real de envío y
-registro de auditoría.
+Las seis fases de la migración están completas: la aplicación recibe SMS y los reenvía a otro
+número —o de vuelta al propio remitente— según reglas con expresiones regulares, con protección
+antibucle, confirmación real de envío y registro de auditoría.
+
+**La fase 7 está abierta.** Es la fase de pruebas en dispositivo real y correcciones, y arrancó
+el 8 oct 2026 con la primera instalación en un teléfono. No tiene un alcance cerrado por
+adelantado a propósito: lo que entra en ella lo decide lo que falle al usar la aplicación. Se
+cierra cuando el circuito completo funcione contra una red de operador y no queden síntomas
+abiertos.
 
 | Fase | Estado | Commit |
 |------|--------|--------|
@@ -478,23 +493,111 @@ registro de auditoría.
 | 3 · Reenvío por SmsManager | Completada | `1a14c30` |
 | 4 · Pantalla de reglas | Completada | `dee7db6` |
 | 5 · Inicio y logs | Completada | `0baf067` |
-| 6 · Documentación y release | Completada | — |
-
-### Lo que queda pendiente, por orden de utilidad
-
-1. **Firmar el APK de release.** Añadir las cuatro claves a `local.properties` y recompilar.
-2. **Probar en dispositivo real con dos teléfonos.** Todo lo verificado hasta aquí es compilación
-   y tests unitarios: el circuito completo SIM → regla → `SmsManager` → teléfono destino no se ha
-   ejecutado nunca contra una red de operador.
-3. **Etiquetar `v1.0.0`** y empujar al repositorio nuevo.
-4. **Decidir la convención de nombres de los casos de uso**: `GetSmsListUseCase` está en inglés y
-   `ProcesarSmsEntranteUseCase` en español. Son dos ficheros y tres referencias.
-5. **Fase 7, si interesa:** destino extraído de un grupo de captura de la regex, reglas con
-   ventana horaria, y tests instrumentados de Room y del worker.
+| 6 · Documentación y release | Completada | `67d567c` |
+| **7 · Pruebas en dispositivo y correcciones** | **Abierta** | rondas 1-2 sin commit |
 
 ---
 
-### Fase 7 — Opcional · `[ ]`
+### Fase 7 — Pruebas en dispositivo real y correcciones · `[~]` abierta el 8 oct 2026
+
+Las seis fases anteriores se cerraron contra `BUILD SUCCESSFUL` y tests unitarios. Esta se cierra
+contra un teléfono: cada ronda es instalar, usar la aplicación, anotar lo que falle y corregirlo.
+No se planifica por adelantado — el alcance lo marca lo que aparezca.
+
+#### Ronda 1 · 8 oct 2026 — primera instalación
+
+Las seis fases estaban marcadas como completadas, con 55 tests en verde, y aun así cinco cosas no
+funcionaban. Las tres primeras eran bloqueantes: la pantalla de reglas aparecía vacía y de dos
+pantallas no se podía salir.
+
+| Síntoma | Causa |
+|---------|-------|
+| La pantalla de reglas aparece vacía | Al `RecyclerView` de `fragment_reglas.xml` le faltaba el `LayoutManager`. Sin él, RecyclerView registra «No layout manager attached; skipping layout» y no pinta nada — **sin fallar**. Las reglas estaban en la base de datos todo el tiempo |
+| No se puede salir de «Probar reglas» | Con `targetSdk 35`, Android 15 dibuja de borde a borde sin posibilidad de desactivarlo, y la barra de navegación del sistema quedaba **encima** del Bottom Navigation. Como esa pantalla no tiene pestaña propia, no había salida |
+| El notch se superpone a la aplicación | La misma causa: ningún inset aplicado en ninguna parte |
+| No hay forma de contestar al remitente | Función que faltaba. El destino solo admitía un número fijo |
+| La exención de batería hay que darla por ADB | Función que faltaba. El teléfono dedicado no suele tener un cable delante |
+| Los iconos de la barra de estado no se leen | Blancos sobre el fondo casi blanco del tema. Es la otra mitad del borde a borde: al dibujar bajo la barra de estado, el fondo que hay detrás de la hora pasa a ser el de la aplicación, y el sistema por sí solo mantiene los iconos claros |
+| El icono del lanzador es el de SMSGateway | El renombrado de la fase 1 cambió el nombre y el `applicationId`, pero no los recursos del icono. Las dos aplicaciones pueden convivir en el mismo teléfono y se confundían |
+
+**Arreglos:** `MainActivity` reparte los insets (`systemBars or displayCutout`); «Probar reglas»
+y el editor ganan botón de volver propio, porque depender de la barra inferior para salir de una
+pantalla que no está en ella es frágil de todos modos; `{telefono}` pasa a valer como destino,
+exento de la protección antibucle por ser una circularidad intencionada; y Ajustes gana la
+sección «Fiabilidad en segundo plano». 64 tests, 0 fallos.
+
+**Icono rehecho.** Cambian a la vez el color y la figura, porque uno solo no basta: dos iconos
+del mismo azul se siguen confundiendo en la bandeja aunque el dibujo sea distinto. El fondo pasa
+al verde azulado de `md_theme_primary` —el color que ya usa la interfaz— y la figura a un
+bocadillo con flecha de reenvío, que dice lo que hace la aplicación. La flecha es un hueco con
+`fillType="evenOdd"` en la misma ruta, no una figura encima, para no tener que repetir aquí un
+color de fondo que además es un degradado. Se añade la capa monocroma que faltaba: sin ella,
+Android 13+ deja el icono fuera del tratamiento temático y es el único de la pantalla que no
+sigue al resto. Ya en el lanzador se vio que el dibujo quedaba apretado —la punta del bocadillo
+a 6 dp del borde recortado—, así que se reduce al 85 % con un `<group>`, en lugar de reescribir
+las coordenadas: la ruta sigue siendo legible y comparable con la de la capa monocroma, que
+lleva exactamente la misma.
+
+#### Ronda 2 · 8 oct 2026 — opción de ignorar mayúsculas
+
+Pedida al usar la aplicación: acordarse de `(?i)` y escribirlo en las dos expresiones es
+exactamente el tipo de detalle que se olvida y que luego parece un fallo de la aplicación.
+
+La regla gana `ignorarMayusculas`, que aplica `RegexOption.IGNORE_CASE` a los dos criterios al
+compilar. El patrón guardado no se toca: cambia cómo se compila, no lo que se escribió. Convive
+con un `(?i)` puesto a mano, y la diferencia es el alcance — el ajuste cubre las dos expresiones,
+el modificador solo la suya.
+
+**Primera migración de esquema del proyecto.** Es el cambio que cierra la puerta que el plan
+dejaba abierta: hasta ahora el esquema v1 se podía editar en sitio desinstalando la aplicación,
+pero con la app ya instalada en un teléfono y con reglas dentro, eso significaba o perder los
+datos del usuario o que Room abortase al abrir. Así que v2 con `Migraciones.DE_1_A_2`, un
+`ALTER TABLE ... DEFAULT 0` que conserva el comportamiento de las reglas existentes: nadie se
+encuentra con que sus reglas empiezan a casar con más mensajes después de actualizar.
+
+El formato de intercambio sube a la versión 2. Añadir un campo opcional no rompe la importación
+de un fichero de la 1, pero sí importa el caso contrario: una versión antigua leyendo un fichero
+nuevo descartaría el campo en silencio —`ignoreUnknownKeys` está activado— y la regla entraría
+distinguiendo mayúsculas sin avisar. Con la versión por delante, esa importación se rechaza con
+un mensaje que lo explica.
+
+73 tests, 0 fallos.
+
+---
+
+#### La lección, que es sobre el plan y no sobre el código
+
+Las fases 3, 4 y 5 **declaraban cada una su «Verificación» en un dispositivo** —crear tres
+reglas y reordenarlas, comprobar que un SMS real toma la ruta esperada, exportar e importar— y
+ninguna se ejecutó. Los apartados «Resultado real» de las tres informan exclusivamente de
+`./gradlew test assembleDebug`. El plan marcó como completado lo que estaba compilado.
+
+Los dos fallos bloqueantes comparten la propiedad que los hacía invisibles desde un build: **no
+lanzan ninguna excepción**. Un `RecyclerView` sin `LayoutManager` escribe una línea en logcat y
+sigue; los insets sin aplicar son, literalmente, no hacer nada. Ningún test unitario sobre Kotlin
+puro los habría visto, y no porque falten tests, sino porque no son esa clase de fallo. Marcar
+una fase de interfaz como completada exige haber mirado la pantalla.
+
+---
+
+### Lo que queda pendiente, por orden de utilidad
+
+1. **Seguir la fase 7**, que la ronda 1 solo empezó. Queda el circuito completo contra una red
+   de operador: SIM → regla → `SmsManager` → teléfono destino, con dos teléfonos y las reglas
+   reordenadas, más exportar/importar de ida y vuelta.
+2. **Firmar el APK de release.** Añadir las cuatro claves a `local.properties` y recompilar.
+   Esta copia de trabajo no tiene el fichero, así que el APK sale sin firmar.
+3. **Etiquetar `v1.0.0`** y empujar al repositorio nuevo. No hay etiquetas ni remoto configurado.
+4. **Fase 8, si interesa:** destino extraído de un grupo de captura de la regex, reglas con
+   ventana horaria, y tests instrumentados de Room y del worker.
+
+> El punto «decidir la convención de nombres de los casos de uso» desaparece de esta lista:
+> `GetSmsListUseCase` ya se renombró a `ObtenerListaSmsUseCase` en la fase 6, y la convención
+> está escrita en `CLAUDE.md`. La lista lo arrastraba sin motivo.
+
+---
+
+### Fase 8 — Opcional · `[ ]`
 
 Nada de esto bloquea una 1.0 utilizable: destino extraído de un grupo de captura de la propia
 regex, reglas con ventana horaria, y tests instrumentados de Room y del worker.
@@ -506,6 +609,7 @@ regex, reglas con ventana horaria, y tests instrumentados de Room y del worker.
 | Riesgo | Mitigación |
 |--------|-----------|
 | **Bucles de reenvío.** Si un destino contesta, o si se configura el propio número, el mensaje vuelve a entrar, casa otra vez y se reenvía — con reintentos automáticos detrás, eso es una factura. | Las tres protecciones de la fase 3. |
+| **Reglas que contestan al remitente** (`{telefono}` como destino, fase 7). Quedan exentas de la protección 2 a propósito, así que si el otro extremo también responde solo, los dos aparatos se contestan. | Solo el límite por minuto, que los para pero después de gastar hasta diez SMS. La mitigación real es de configuración: acotar la regla con un `regexMensaje` concreto. El panel de prueba lo avisa en pantalla. |
 | **El envío es asíncrono.** `SmsManager` retorna al instante; el resultado llega después por broadcast. Sin esperarlo, todo parece enviado y los fallos se pierden en silencio. | Puente suspendido sobre `sentIntent` con timeout. |
 | **Multipart multiplica el coste.** Un mensaje largo se parte y cada parte confirma por separado. Si una falla y otra no, el reenvío queda incompleto. | Se considera fallido y se reintenta entero, aceptando posibles duplicados en el destino. |
 | **`SEND_SMS` es un permiso restringido.** | Irrelevante para distribución por APK; cierra la puerta a Google Play sin justificación aprobada. |

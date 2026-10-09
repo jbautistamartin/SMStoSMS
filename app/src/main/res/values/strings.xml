@@ -36,6 +36,15 @@
     <string name="settings_guardar">Guardar configuración</string>
     <string name="settings_guardado">Configuración guardada</string>
 
+    <string name="settings_seccion_bateria">Fiabilidad en segundo plano</string>
+    <string name="settings_bateria_ok">✓ Sin restricciones de batería</string>
+    <string name="settings_bateria_ok_detalle">El sistema no suspende la aplicación: los SMS se reenvían en segundos aunque la pantalla esté apagada.</string>
+    <string name="settings_bateria_pendiente">⚠ La optimización de batería está activa</string>
+    <string name="settings_bateria_pendiente_detalle">Con el ahorro de batería activo, Android puede retrasar los reenvíos horas mientras la pantalla está apagada. Concede la exención para que salgan al momento.</string>
+    <string name="settings_bateria_activar">Desactivar ahorro de batería</string>
+    <string name="settings_bateria_revisar">Revisar en Ajustes del sistema</string>
+    <string name="settings_bateria_sin_pantalla">Este teléfono no permite abrir ese ajuste desde la app. Búscalo en Ajustes → Batería → Optimización de batería.</string>
+
     <string name="settings_seccion_protecciones">Protecciones</string>
     <string name="settings_proteger_bucles">Evitar bucles de reenvío</string>
     <string name="settings_proteger_bucles_detalle">Descarta los SMS cuyo remitente sea un destino configurado y los reenvíos dirigidos al propio remitente. Desactívalo solo en pruebas controladas.</string>
@@ -98,6 +107,7 @@ Sin reglas no se reenvía nada: los SMS se reciben y se quedan marcados como «s
     <string name="reglas_fallo">No se pudo completar: %1$s</string>
     <string name="reglas_criterio_telefono">Teléfono: %1$s</string>
     <string name="reglas_criterio_mensaje">Mensaje: %1$s</string>
+    <string name="reglas_criterio_sin_mayusculas">sin distinguir mayúsculas</string>
     <string name="reglas_criterio_todo">Sin filtros: casa con todos los SMS</string>
     <string name="reglas_destino">→ %1$s</string>
     <string name="reglas_destino_continua">→ %1$s · sigue evaluando</string>
@@ -114,8 +124,12 @@ Sin reglas no se reenvía nada: los SMS se reciben y se quedan marcados como «s
     <string name="regla_regex_mensaje">Expresión regular del mensaje</string>
     <string name="regla_regex_mensaje_ayuda">Se aplica al texto completo del SMS</string>
     <string name="regla_seccion_reenvio">Qué se reenvía</string>
+    <string name="regla_ignorar_mayusculas">Ignorar mayúsculas</string>
+    <string name="regla_ignorar_mayusculas_ayuda">Aplica las dos expresiones sin distinguir mayúsculas de minúsculas: «hola» casa con «HOLA». Equivale a escribir (?i) en ambas.</string>
+
     <string name="regla_destino">Número destino</string>
-    <string name="regla_destino_ayuda">A dónde se reenvía el SMS si la regla casa</string>
+    <string name="regla_destino_ayuda">Un número, o {telefono} para contestar a quien envió el SMS</string>
+    <string name="regla_destino_remitente">Contestar al remitente ({telefono})</string>
     <string name="regla_plantilla">Plantilla del texto</string>
     <string name="regla_plantilla_ayuda">Marcadores: {mensaje}, {telefono}, {fecha}</string>
     <string name="regla_previsualizacion">Así saldría</string>
@@ -144,6 +158,7 @@ Sin reglas no se reenvía nada: los SMS se reciben y se quedan marcados como «s
 
     <!-- Común -->
     <string name="cancelar">Cancelar</string>
+    <string name="volver">Volver</string>
 
     <!-- Notifications -->
     <string name="notification_processing_sms">Procesando SMS entrante…</string>

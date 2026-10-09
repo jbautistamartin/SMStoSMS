@@ -120,4 +120,26 @@ class NormalizadorTelefonoTest {
     fun `estaEnLista con lista vacia devuelve false`() {
         assertFalse(NormalizadorTelefono.estaEnLista("+34600112233", emptyList()))
     }
+
+    // ── Destinos a los que se puede enviar ────────────────────────────────────
+
+    @Test
+    fun `un numero normal es un destino enviable`() {
+        assertTrue(NormalizadorTelefono.esDestinoEnviable("+34600112233"))
+        assertTrue(NormalizadorTelefono.esDestinoEnviable("600112233"))
+    }
+
+    @Test
+    fun `un numero corto de servicio sigue siendo enviable`() {
+        // Cuatro dígitos es el mínimo a propósito: hay números de servicio de esa longitud.
+        assertTrue(NormalizadorTelefono.esDestinoEnviable("2255"))
+    }
+
+    @Test
+    fun `una cabecera alfanumerica no es un destino enviable`() {
+        assertFalse(NormalizadorTelefono.esDestinoEnviable("BANCO"))
+        assertFalse(NormalizadorTelefono.esDestinoEnviable("AMAZON"))
+        assertFalse(NormalizadorTelefono.esDestinoEnviable(""))
+        assertFalse(NormalizadorTelefono.esDestinoEnviable(null))
+    }
 }

@@ -20,7 +20,8 @@ package com.capicua.smstosms.domain.model
  *   los dos vacíos casa con **todos** los SMS, útil como última regla de la lista.
  * - La coincidencia es **parcial**: el patrón `codigo` casa con «Tu codigo es 4821».
  *   Para exigir el texto completo hay que anclarlo con `^…$`.
- * - Las expresiones distinguen mayúsculas. Para ignorarlas se usa el modificador `(?i)`.
+ * - Las expresiones distinguen mayúsculas, salvo que se active [ignorarMayusculas]. También
+ *   se puede usar el modificador `(?i)` dentro de la propia expresión.
  *
  * ## Plantilla
  * [plantilla] define el texto que se envía al destino, con tres marcadores opcionales:
@@ -42,6 +43,15 @@ data class Regla(
 
     /** Expresión regular sobre el cuerpo del SMS. Null o vacío = no filtra. */
     val regexMensaje: String? = null,
+
+    /**
+     * Si true, [regexTelefono] y [regexMensaje] se aplican **sin distinguir mayúsculas**.
+     *
+     * Equivale a anteponer `(?i)` a las dos expresiones, pero sin tener que conocer el
+     * modificador ni acordarse de ponerlo en ambas. Si además se escribe `(?i)` a mano, no
+     * pasa nada: el resultado es el mismo.
+     */
+    val ignorarMayusculas: Boolean = false,
 
     /** Número de teléfono al que se reenvía el mensaje si la regla casa. */
     val destino: String,

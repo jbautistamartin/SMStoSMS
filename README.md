@@ -28,6 +28,8 @@ otra, y el resto a ninguna parte.
 - **Sin pérdida de mensajes** — patrón outbox: el SMS se persiste en Room antes de hacer nada más
 - **Confirmación real de envío** — se espera el `sentIntent` del operador; un reenvío solo se da
   por bueno cuando todas sus partes confirman
+- **Contestar al remitente** — `{telefono}` como destino devuelve el mensaje a quien lo envió
+- **Mayúsculas opcionales** — cada regla decide si sus expresiones distinguen mayúsculas
 - **Protección antibucle** — descarta los SMS que vuelven de un destino configurado, no reenvía
   al propio remitente y limita los reenvíos por minuto, porque cada SMS cuesta dinero
 - **Reintentos automáticos** — WorkManager con backoff configurable, y rescate cada 30 segundos
@@ -151,8 +153,11 @@ adb shell dumpsys deviceidle whitelist +com.capicua.smstosms
 ```
 
 Sin la exención de batería, el modo Doze de Android puede retrasar los reenvíos horas cuando la
-pantalla está apagada. Los pasos equivalentes desde la propia interfaz del dispositivo, por
-fabricante, están en [`CLAUDE.md`](CLAUDE.md).
+pantalla está apagada.
+
+Si no tienes el cable a mano, la propia app lo resuelve: **Ajustes** → **Fiabilidad en segundo
+plano** dice si la exención está concedida y el botón abre la pantalla del sistema que la
+concede. Los pasos manuales por fabricante están en [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
@@ -177,13 +182,18 @@ Una regla casa cuando se cumplen **sus dos criterios**. Un criterio vacío se co
 |-------|----------|
 | Expresión del remitente | Se aplica al número tal como llega, sin normalizar. Puede ser alfanumérico: `BANCO`, `AMAZON` |
 | Expresión del mensaje | Se aplica al texto completo del SMS |
-| Número destino | A dónde se reenvía |
+| Número destino | A dónde se reenvía. Un número, o `{telefono}` para contestar a quien escribió |
 | Plantilla | Qué texto se envía, con `{mensaje}`, `{telefono}` y `{fecha}` |
+| Ignorar mayúsculas | Aplica las dos expresiones sin distinguir mayúsculas de minúsculas |
 | Activa | Desactívala para que no se evalúe, sin borrarla |
 | Seguir evaluando | Tras casar, continúa con las reglas siguientes |
 
 La búsqueda es **parcial**: el patrón `codigo` casa con «Tu codigo es 4821». Para exigir el texto
-completo, ánclalo con `^…$`. Las expresiones distinguen mayúsculas; usa `(?i)` para ignorarlas.
+completo, ánclalo con `^…$`.
+
+Las expresiones **distinguen mayúsculas** salvo que actives **Ignorar mayúsculas** en la regla,
+que las aplica sin distinguir a las dos a la vez. También puedes escribir `(?i)` dentro de una
+expresión concreta si solo quieres que afecte a esa; activar las dos cosas no da problemas.
 
 Ejemplos:
 
@@ -197,7 +207,25 @@ Remitente: (vacío)          Mensaje: (?i)codigo    → +34600112233
 # Todo lo que llegue de un número concreto, a dos destinos
 Remitente: ^\+34700        Mensaje: (vacío)        → +34600112233  [seguir evaluando]
 Remitente: ^\+34700        Mensaje: (vacío)        → +34600112244
+
+# Acuse de recibo: contesta al que escribió, sin tocar a nadie más
+Remitente: (vacío)          Mensaje: (?i)^alta      → {telefono}
 ```
+
+### Contestar al mismo móvil que escribió
+
+Pon `{telefono}` en el **número destino**, o pulsa «Contestar al remitente» en el editor de la
+regla. El reenvío sale al número del que llegó el SMS, y la plantilla decide qué se le devuelve:
+`Recibido: {mensaje}` acusa recibo con el texto original, y una plantilla fija como
+`Hemos registrado tu alta` contesta sin devolver nada de lo que escribió.
+
+La protección antibucle **no** bloquea estas reglas: escribir `{telefono}` es pedir la
+circularidad a propósito, y lo que la protección evita es la accidental. Eso deja el límite de
+reenvíos por minuto como única red, así que si el otro extremo también responde solo, acota la
+regla con una expresión del mensaje concreta en lugar de dejarla casando con todo.
+
+Si quien escribe es una cabecera alfanumérica (`BANCO`, `AMAZON`), no se le puede devolver nada:
+ese reenvío se omite y queda anotado en el registro.
 
 ---
 

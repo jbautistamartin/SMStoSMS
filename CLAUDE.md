@@ -107,11 +107,20 @@ empty matches every SMS:
 - `regexMensaje` — applied to the full SMS body.
 
 Matching is **partial** (`Regex.containsMatchIn`): `codigo` matches "Tu codigo es 4821". Anchor
-with `^…$` to require the whole text. Patterns are case-sensitive; use `(?i)` to ignore case.
+with `^…$` to require the whole text. Patterns are case-sensitive unless the rule sets
+`ignorarMayusculas`, which applies `RegexOption.IGNORE_CASE` to **both** expressions at once;
+an inline `(?i)` still works and the two are cumulative, not conflicting.
 
 Rules are evaluated in ascending `orden`. The first match wins and evaluation stops, **unless**
 the rule has `continuar = true`, in which case evaluation carries on and the same SMS can reach
 several destinations.
+
+The rule's `destino` is normally a fixed phone number, but it also accepts the `{telefono}`
+marker, which resolves to **the sender of the incoming SMS**. That is how you reply to whoever
+wrote in. It is the only marker resolved in the destination — `{mensaje}` and `{fecha}` are left
+untouched there, so the SMS body (third-party content) can never influence where anything is
+sent. The rule editor offers it as a button ("Contestar al remitente"), because a marker nobody
+knows about is not a feature.
 
 The forwarded text comes from the rule's `plantilla`, with three optional markers:
 
@@ -130,9 +139,17 @@ first two controlled by `AppConfig.protegerBucles`:
 
 1. An SMS whose **sender is one of the configured destinations** is discarded: it came back from
    a number we forward to.
-2. A matched rule whose **destination equals the sender** is skipped.
+2. A matched rule whose **destination equals the sender** is skipped — *unless* the rule declared
+   `{telefono}` as its destination. Writing that marker is an explicit request to reply to the
+   sender, so what guard 2 blocks is accidental circularity, not configured circularity. A
+   reply-to-sender rule therefore has only the rate limit behind it: keep its `regexMensaje`
+   specific if the other end might also auto-reply.
 3. `AppConfig.maxReenviosPorMinuto` caps how many reenvíos can be created per minute. The excess
    is discarded and logged. This one is always active.
+
+A fourth check applies only to reply-to-sender rules: if the sender is an alphanumeric header
+(`BANCO`, `AMAZON`), it cannot receive an SMS, so the reenvío is skipped and logged as `ERROR`
+rather than attempted and retried. `NormalizadorTelefono.esDestinoEnviable()` decides.
 
 Number comparison goes through `NormalizadorTelefono`, which strips non-digits and compares the
 last 9, so `+34600112233` and `600112233` are recognised as the same subscriber. Alphanumeric
@@ -152,6 +169,8 @@ senders never compare equal to anything — you cannot forward to them, so they 
 | `worker/OrphanRescueWorker.kt` | Rescues stalled SMS and reenvíos every 30 s |
 | `data/config/AppConfig.kt` | Retries, timeout, rate limit, guards, SIM |
 | `data/rules/ReglasJson.kt` | Versioned rule export/import format |
+| `data/local/db/Migraciones.kt` | Hand-written Room migrations, registered by `DatabaseModule` |
+| `util/OptimizacionBateria.kt` | Doze exemption: status query + the Settings screen's button |
 
 ### Why SmsSender suspends
 
@@ -182,11 +201,11 @@ Client-side, at two levels:
 
 ### Room database
 
-Four tables, schema version **1** (see the KDoc on `SmsDatabase` for why it restarts at 1):
+Four tables, schema version **2** (see the KDoc on `SmsDatabase` for why it restarted at 1):
 
 - `sms` — one row per received SMS. Only what arrived plus `estado`
   (`PENDIENTE`/`PROCESADO`/`SIN_REGLA`/`DESCARTADO`) and `motivo_descarte`.
-- `reglas` — ordered forwarding rules.
+- `reglas` — ordered forwarding rules, including `ignorar_mayusculas` (added in v2).
 - `reenvios` — the dispatch unit: one row per destination, with its own `estado`, `intentos`
   and `ultimo_error`. FK to `sms` is CASCADE; FK to `reglas` is SET NULL, and `nombre_regla`
   is denormalized so history survives rule deletion.
@@ -196,9 +215,10 @@ Four tables, schema version **1** (see the KDoc on `SmsDatabase` for why it rest
 WAL mode enabled. Schemas are exported to `app/schemas/` and versioned. No
 `fallbackToDestructiveMigration` — migrations must be explicit.
 
-> While no 1.0.0 is published, schema v1 is still editable: apply a change by uninstalling the
-> app or clearing its data. After the first release, any change requires a version bump and an
-> explicit `Migration`.
+> The schema stopped being editable in place the moment the app was installed on a phone with
+> rules in it: changing a version without migrating makes Room abort when opening the database.
+> Every change now bumps the version and writes its `Migration` in `data/local/db/Migraciones.kt`,
+> which `DatabaseModule` registers. Both `1.json` and `2.json` are versioned under `app/schemas/`.
 
 ## Naming conventions
 
@@ -232,7 +252,15 @@ Android's **Doze mode** suspends background processes when the screen is off for
 minutes. WorkManager respects Doze and may delay `SmsDispatchWorker` by hours. Exempting the app
 ensures every SMS is forwarded within seconds of arrival, regardless of screen or battery state.
 
-### Option A — ADB command (fastest, requires USB + developer tools)
+### Option A — in the app (no USB, no manufacturer-specific path)
+
+**Ajustes** → **Fiabilidad en segundo plano**. The card states whether the exemption is already
+granted and the button opens the system screen that grants it. It tries three destinations in
+order — the one-tap exemption dialog, the full battery-optimization list, the app's Settings
+entry — because no manufacturer guarantees the first. This is the route to prefer on a phone
+you are holding; the status refreshes when you come back to the screen.
+
+### Option B — ADB command (fastest when the phone is already plugged in)
 
 ```bash
 adb shell dumpsys deviceidle whitelist +com.capicua.smstosms
@@ -245,9 +273,10 @@ adb shell dumpsys deviceidle whitelist
 # Expected output includes a line with: com.capicua.smstosms
 ```
 
-### Option B — On-device UI (no USB required)
+### Option C — On-device UI, by hand
 
-The exact path varies by manufacturer. Use the closest match:
+Only needed if the in-app button cannot open anything. The exact path varies by manufacturer;
+use the closest match:
 
 **Stock Android / Pixel**
 1. **Ajustes** → **Aplicaciones** → **SMStoSMS**
@@ -293,12 +322,19 @@ The exact path varies by manufacturer. Use the closest match:
   to Google Play without an approved declaration.
 - Debug variant uses `applicationId = com.capicua.smstosms.debug`, so it can coexist with the
   release build on the same device. They do **not** share a database.
+- **Edge-to-edge is mandatory here.** With `targetSdk 35`, Android 15 draws the window under the
+  status and navigation bars and ignores `fitsSystemWindows`; there is no opt-out. `MainActivity`
+  distributes the insets (`systemBars or displayCutout`) and is the only place that does, so any
+  new top-level container inherits it. Without it the camera cutout covered each screen's header
+  and the system navigation bar sat **on top of** the Bottom Navigation, which made the screens
+  that are not in that bar impossible to leave. `ProbarReglasFragment` and `EditarReglaFragment`
+  also carry their own back button, since neither has an entry in the bottom bar.
 - **Known toolchain item:** the wrapper is Gradle 9.3.0 while AGP is 8.5.2. It builds, but warns
   about APIs that disappear in Gradle 10 — among them `android.applicationVariants.all`, the
   block that renames the release APK. Before moving to Gradle 10, either raise AGP or pin the
   wrapper to Gradle 8.x. Nothing is broken today, so this was deliberately left alone.
 - Three unit test suites cover the parts worth covering, all pure Kotlin with no Android
-  dependencies: `EvaluadorDeReglasTest` (32), `NormalizadorTelefonoTest` (15) and
-  `ReglasJsonTest` (8). The `SmsRepositoryTest` placeholder that never compiled is gone.
+  dependencies: `EvaluadorDeReglasTest` (45), `NormalizadorTelefonoTest` (18) and
+  `ReglasJsonTest` (10). The `SmsRepositoryTest` placeholder that never compiled is gone.
 - `MASTERPLAN.md` records the migration from SMSGateway phase by phase, including the decisions
   taken and the deviations from the original plan. Read it before changing anything structural.

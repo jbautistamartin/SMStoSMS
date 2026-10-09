@@ -18,6 +18,7 @@ import androidx.room.PrimaryKey
  * - [orden]           Prioridad. Menor valor = se evalúa antes. Indexado para ordenar la lista.
  * - [regexTelefono]   Expresión regular sobre el remitente. Null = no filtra por teléfono.
  * - [regexMensaje]    Expresión regular sobre el cuerpo. Null = no filtra por mensaje.
+ * - [ignorarMayusculas] true = las dos expresiones se aplican sin distinguir mayúsculas.
  * - [destino]         Número al que se reenvía.
  * - [plantilla]       Texto a enviar, con marcadores `{mensaje}`, `{telefono}` y `{fecha}`.
  * - [activa]          false = la regla se ignora sin borrarla.
@@ -47,6 +48,9 @@ data class ReglaEntity(
 
     @ColumnInfo(name = "regex_mensaje")
     val regexMensaje: String? = null,
+
+    @ColumnInfo(name = "ignorar_mayusculas", defaultValue = "0")
+    val ignorarMayusculas: Boolean = false,
 
     @ColumnInfo(name = "destino")
     val destino: String,

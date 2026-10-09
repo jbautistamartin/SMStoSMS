@@ -12,12 +12,38 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
+        <!-- Cabecera: el botón de volver es la salida explícita de esta pantalla, que no
+             está en la barra inferior. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/probar_title"
-            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-            android:layout_marginBottom="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_volver"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="-8dp"
+                android:layout_marginEnd="4dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="@string/volver"
+                app:icon="@drawable/ic_arrow_back"
+                app:iconSize="24dp"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/probar_title"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall" />
+
+        </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"

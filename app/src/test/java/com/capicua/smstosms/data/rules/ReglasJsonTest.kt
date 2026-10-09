@@ -37,11 +37,25 @@ class ReglasJsonTest {
         nombre: String = "Banco",
         regexTelefono: String? = "^BANCO$",
         regexMensaje: String? = "codigo",
+        ignorarMayusculas: Boolean = false,
         destino: String = "+34600112233",
         plantilla: String = "De {telefono}: {mensaje}",
         activa: Boolean = true,
         continuar: Boolean = false
-    ) = Regla(id, orden, nombre, regexTelefono, regexMensaje, destino, plantilla, activa, continuar)
+    ) = Regla(
+        // Argumentos nombrados a propósito: con posicionales, añadir un campo al modelo
+        // compila mal o, peor, compila y cambia de sitio dos valores del mismo tipo.
+        id = id,
+        orden = orden,
+        nombre = nombre,
+        regexTelefono = regexTelefono,
+        regexMensaje = regexMensaje,
+        ignorarMayusculas = ignorarMayusculas,
+        destino = destino,
+        plantilla = plantilla,
+        activa = activa,
+        continuar = continuar
+    )
 
     // ── Ida y vuelta ──────────────────────────────────────────────────────────
 
@@ -109,7 +123,7 @@ class ReglasJsonTest {
         )
 
         assertTrue(serializado.contains("\"version\""))
-        assertEquals(1, ReglasExportadas.VERSION_ACTUAL)
+        assertEquals(2, ReglasExportadas.VERSION_ACTUAL)
     }
 
     // ── Tolerancia ────────────────────────────────────────────────────────────
@@ -133,6 +147,48 @@ class ReglasJsonTest {
         assertFalse(regla.continuar)
         assertNull(regla.regexTelefono)
         assertNull(regla.regexMensaje)
+        assertFalse(regla.ignorarMayusculas)
+    }
+
+    @Test
+    fun `un fichero del formato 1 se importa y la regla distingue mayusculas`() {
+        // Compatibilidad hacia atrás: los ficheros exportados antes de que existiera la
+        // opción no la traen, y la regla tiene que entrar con el comportamiento que tenía.
+        val formato1 = """
+            {
+              "version": 1,
+              "exportado": "2026-10-07T19:30:00Z",
+              "reglas": [
+                { "nombre": "Banco", "regex_mensaje": "codigo", "destino": "+34600112233" }
+              ]
+            }
+        """.trimIndent()
+
+        val regla = json.decodeFromString(ReglasExportadas.serializer(), formato1)
+            .reglas.single().aDominio(orden = 0)
+
+        assertFalse(regla.ignorarMayusculas)
+    }
+
+    @Test
+    fun `ignorar_mayusculas sobrevive a exportar e importar`() {
+        val original = Regla(
+            orden = 0,
+            nombre = "Sin cajas",
+            regexMensaje = "hola",
+            ignorarMayusculas = true,
+            destino = "+34600112233"
+        )
+
+        val recuperada = json.decodeFromString(
+            ReglasExportadas.serializer(),
+            json.encodeToString(
+                ReglasExportadas.serializer(),
+                ReglasExportadas(exportado = "2026-10-08T20:00:00Z", reglas = listOf(original.aJson()))
+            )
+        ).reglas.single().aDominio(orden = 0)
+
+        assertTrue(recuperada.ignorarMayusculas)
     }
 
     @Test

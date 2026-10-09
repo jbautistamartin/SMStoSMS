@@ -27,6 +27,15 @@ import javax.inject.Singleton
  *
  * La coincidencia es **parcial** ([Regex.containsMatchIn]): el patrón `codigo` casa con
  * «Tu codigo es 4821». Para exigir el texto completo hay que anclar con `^…$`.
+ *
+ * Las expresiones distinguen mayúsculas salvo que la regla active [Regla.ignorarMayusculas],
+ * que aplica [RegexOption.IGNORE_CASE] a las dos a la vez.
+ *
+ * ## Destino
+ * [Regla.destino] es normalmente un número fijo, pero admite el marcador [MARCADOR_TELEFONO]
+ * para devolver el mensaje **al propio remitente**. Es el único marcador que se resuelve en el
+ * destino, y marca la coincidencia con [Coincidencia.respondeAlRemitente] para que la
+ * protección antibucle sepa que esa circularidad es intencionada.
  */
 @Singleton
 class EvaluadorDeReglas @Inject constructor() {
@@ -51,8 +60,8 @@ class EvaluadorDeReglas @Inject constructor() {
         val invalidas = mutableListOf<ReglaInvalida>()
 
         for (regla in reglas.filter { it.activa }.sortedBy { it.orden }) {
-            val patronTelefono = compilar(regla.regexTelefono)
-            val patronMensaje = compilar(regla.regexMensaje)
+            val patronTelefono = compilar(regla.regexTelefono, regla.ignorarMayusculas)
+            val patronMensaje = compilar(regla.regexMensaje, regla.ignorarMayusculas)
 
             // Una regla con un patrón roto no se puede evaluar con seguridad: se descarta
             // entera y se anota, pero no interrumpe el resto de la lista.
@@ -79,8 +88,9 @@ class EvaluadorDeReglas @Inject constructor() {
             coincidencias += Coincidencia(
                 reglaId = regla.id,
                 nombreRegla = regla.nombre,
-                destino = regla.destino,
-                textoFinal = resolverPlantilla(regla.plantilla, telefono, mensaje, fecha)
+                destino = resolverDestino(regla.destino, telefono),
+                textoFinal = resolverPlantilla(regla.plantilla, telefono, mensaje, fecha),
+                respondeAlRemitente = respondeAlRemitente(regla.destino)
             )
 
             if (!regla.continuar) break
@@ -107,7 +117,31 @@ class EvaluadorDeReglas @Inject constructor() {
         .replace(MARCADOR_MENSAJE, mensaje)
 
     /**
+     * Resuelve el destino de una regla, que puede ser un número fijo o el marcador
+     * `{telefono}` para devolver el mensaje al propio remitente.
+     *
+     * Solo se sustituye `{telefono}`: `{mensaje}` y `{fecha}` no tienen sentido como destino y
+     * dejarlos fuera evita que el cuerpo del SMS —contenido ajeno— pueda influir en a dónde
+     * se envía nada.
+     */
+    fun resolverDestino(destino: String, telefono: String): String =
+        destino.replace(MARCADOR_TELEFONO, telefono).trim()
+
+    /**
+     * true si el destino de la regla es el propio remitente.
+     *
+     * Quien llama lo necesita para saber que la circularidad es **intencionada**: escribir
+     * `{telefono}` en el destino es la forma explícita de pedir «contesta a quien me escribió»,
+     * y la protección antibucle no debe bloquear lo que se ha pedido a propósito.
+     */
+    fun respondeAlRemitente(destino: String?): Boolean =
+        destino?.contains(MARCADOR_TELEFONO) == true
+
+    /**
      * Comprueba si un patrón es utilizable.
+     *
+     * No recibe el ajuste de mayúsculas a propósito: ignorarlas no puede hacer que un patrón
+     * válido deje de compilar, así que la validación es la misma en los dos casos.
      *
      * @return null si compila o está vacío; si no, la descripción del error de sintaxis,
      *         lista para mostrar bajo el campo en la pantalla de reglas.
@@ -117,12 +151,17 @@ class EvaluadorDeReglas @Inject constructor() {
 
     // ── Interno ───────────────────────────────────────────────────────────────
 
-    private fun compilar(patron: String?): Patron =
+    /**
+     * @param ignorarMayusculas añade [RegexOption.IGNORE_CASE]. Es acumulativo con un `(?i)`
+     *        escrito dentro del patrón: activar los dos no es un error, solo redundante.
+     */
+    private fun compilar(patron: String?, ignorarMayusculas: Boolean = false): Patron =
         if (patron.isNullOrBlank()) {
             Patron.Ausente
         } else {
             try {
-                Patron.Valido(Regex(patron))
+                val opciones = if (ignorarMayusculas) setOf(RegexOption.IGNORE_CASE) else emptySet()
+                Patron.Valido(Regex(patron, opciones))
             } catch (e: PatternSyntaxException) {
                 Patron.Invalido(patron, e.description ?: e.message ?: "expresión regular no válida")
             }

@@ -136,8 +136,14 @@ La aplicación sigue **Clean Architecture** con separación estricta en tres cap
                   │                         │
               SIN_REGLA        ┌────────────▼─────────────┐
                                │ 4. ¿destino = remitente? │──sí──→ omitida
+                               │    ¡salvo {telefono}!    │       (accidental)
                                └────────────┬─────────────┘
                                             │ no
+                               ┌────────────▼─────────────┐
+                               │ 4b. ¿se puede enviar    │──no─→ omitida
+                               │     al destino?          │      (remitente
+                               └────────────┬─────────────┘       alfanumérico)
+                                            │ sí
                                ┌────────────▼─────────────┐
                                │ 5. INSERT reenvios × N   │
                                │    UPDATE sms PROCESADO  │
@@ -193,7 +199,7 @@ presentation/
 ├── dashboard/      SMS recibidos, con regla aplicada, destinos y estado por reenvío
 ├── rules/          Lista ordenada, editor con validación en vivo, panel de prueba
 ├── logs/           Registro con filtros por tipo y exportación a fichero
-├── settings/       Protecciones, reintentos, timeout y selector de SIM
+├── settings/       Exención de batería, protecciones, reintentos, timeout y selector de SIM
 └── about/          Versión, autoría, licencia
 
 domain/
@@ -214,7 +220,7 @@ worker/             SmsDispatchWorker · ColaDeEnvios
 receiver/           SmsReceiver · BootReceiver
 service/            SmsIngestionService
 di/                 DatabaseModule · ConfigModule · RepositoryModule · WorkerModule
-util/               Constants · Extensions
+util/               Constants · Extensions · OptimizacionBateria
 ```
 
 ---
@@ -342,7 +348,16 @@ El **modo Doze** suspende los procesos en segundo plano cuando la pantalla lleva
 apagada. WorkManager respeta Doze y puede retrasar `SmsDispatchWorker` horas. Eximir la
 aplicación es lo que hace que un SMS se reenvíe en segundos y no cuando al sistema le parezca.
 
-Los pasos equivalentes desde la interfaz del dispositivo, fabricante por fabricante, están en
+Sin cable, la propia aplicación lo resuelve: **Ajustes** → **Fiabilidad en segundo plano** dice
+si la exención está concedida y el botón abre la pantalla del sistema que la concede.
+`util/OptimizacionBateria.kt` consulta el estado con `PowerManager.isIgnoringBatteryOptimizations()`
+y prueba tres destinos en cadena —el diálogo de exención directa, la lista completa de
+optimización de batería y la ficha de la aplicación—, porque ningún fabricante garantiza el
+primero. Se prueba lanzando y capturando `ActivityNotFoundException` en lugar de consultar al
+`PackageManager`: desde Android 11 la visibilidad de paquetes puede decir que no hay nada cuando
+sí lo hay.
+
+Los pasos manuales desde la interfaz del dispositivo, fabricante por fabricante, están en
 [`CLAUDE.md`](../CLAUDE.md).
 
 ### Probar sin SIM ni coste
@@ -402,7 +417,8 @@ pestaña **Reglas**.
 | `nombre` | Sí | Etiqueta para reconocerla en la lista y en el registro |
 | `regexTelefono` | No | Expresión sobre el remitente. Vacío = no filtra |
 | `regexMensaje` | No | Expresión sobre el cuerpo. Vacío = no filtra |
-| `destino` | Sí | Número al que se reenvía |
+| `ignorarMayusculas` | — | true = las dos expresiones se aplican sin distinguir mayúsculas |
+| `destino` | Sí | Número al que se reenvía, o `{telefono}` para contestar al remitente |
 | `plantilla` | Sí | Texto a enviar. Por defecto `{mensaje}` |
 | `activa` | — | Si es false, la regla se ignora sin borrarla |
 | `continuar` | — | Si es true, tras casar sigue evaluando las siguientes |
@@ -412,6 +428,19 @@ pestaña **Reglas**.
 Una regla casa cuando **ambos** criterios se cumplen. Un criterio vacío (null o en blanco) se
 considera cumplido, de modo que **una regla sin patrones casa con todos los SMS**. Es potente y
 fácil de crear por descuido, así que la lista lo indica explícitamente.
+
+### Mayúsculas
+
+Por defecto las expresiones distinguen mayúsculas. `ignorarMayusculas` añade
+`RegexOption.IGNORE_CASE` **a las dos a la vez** en el momento de compilar, de modo que el
+patrón guardado no se toca: lo que cambia es cómo se compila, no lo que el operador escribió.
+
+Es acumulativo con un `(?i)` escrito dentro del patrón —activar los dos no es un error, solo
+redundante—, y la diferencia práctica es el alcance: el ajuste afecta a las dos expresiones de
+la regla, el modificador solo a aquella en la que se escribe.
+
+`validarPatron()` no recibe el ajuste a propósito: ignorar mayúsculas no puede hacer que un
+patrón válido deje de compilar, así que la validación del formulario es la misma en ambos casos.
 
 La búsqueda es **parcial**, con `Regex.containsMatchIn`:
 
@@ -443,6 +472,23 @@ Una expresión regular que no compila **no interrumpe la evaluación**: la regla
 demás siguen funcionando. Pero queda registrada como `ERROR` en el log, porque si no, la regla
 «no funcionaría» sin explicación. El editor valida los patrones mientras se teclean para que ese
 caso no llegue a producción.
+
+### Destino
+
+Normalmente es un número fijo. También admite el marcador `{telefono}`, que se resuelve al
+**remitente del SMS entrante**: es la forma de contestar a quien escribió. El editor lo ofrece
+con el botón «Contestar al remitente», porque un marcador que nadie conoce no es una función.
+
+```
+destino: +34600112233     remitente: +34611111111   → envía a +34600112233
+destino: {telefono}       remitente: +34611111111   → envía a +34611111111
+```
+
+Es el **único** marcador que se resuelve en el destino. `{mensaje}` y `{fecha}` se quedan
+literales ahí a propósito: el cuerpo del SMS es contenido ajeno y no debe poder influir en a
+dónde se envía nada. `EvaluadorDeReglas.resolverDestino()` lo implementa, y
+`Coincidencia.respondeAlRemitente` marca la coincidencia para que las protecciones antibucle
+sepan que la circularidad es intencionada (ver §11).
 
 ### Plantilla
 
@@ -569,7 +615,8 @@ realimentarse**. Si el destino contesta, su respuesta entra por `SmsReceiver` co
 SMS; si casa con una regla, se reenvía; y con los reintentos automáticos detrás, un error de
 configuración se convierte en una factura.
 
-Tres protecciones, en el orden en que actúan:
+Tres protecciones, en el orden en que actúan, más una comprobación que solo afecta a las reglas
+que contestan al remitente:
 
 ### 1. El remitente es un destino configurado
 
@@ -583,11 +630,33 @@ Tras evaluar, las coincidencias cuyo destino sea el remitente del SMS se omiten 
 una con su entrada en el log. Si **todas** las coincidencias eran circulares, el SMS queda
 `DESCARTADO`. También controlada por `protegerBucles`.
 
+**Excepción: las reglas que declaran `{telefono}` como destino.** Escribir ese marcador es pedir
+explícitamente contestar a quien escribió, así que lo que esta protección bloquea es la
+circularidad **accidental**, no la configurada. Una coincidencia con
+`respondeAlRemitente = true` pasa el filtro.
+
+Eso deja a una regla de respuesta con el límite por minuto (§11.3) como única red. Importa
+cuando el otro extremo también responde automáticamente: dos aparatos contestándose se paran
+solos al alcanzar el límite, pero habrán gastado hasta diez SMS por minuto hasta entonces. La
+mitigación es de configuración, no de código — acotar la regla con un `regexMensaje` concreto en
+lugar de dejarla casando con todo —, y el panel de prueba lo avisa en pantalla cuando una regla
+de respuesta casa.
+
 ### 3. Límite de reenvíos por minuto
 
 `AppConfig.maxReenviosPorMinuto` (10 por defecto) limita cuántos reenvíos pueden crearse en los
 últimos 60 segundos. El exceso se descarta y se registra. **Esta protección está siempre
 activa**, incluso con `protegerBucles` desactivado: es el cortafuegos económico del sistema.
+
+### 4. El remitente no es un número al que se pueda enviar
+
+Solo se aplica a las reglas que contestan al remitente, y **no** depende de `protegerBucles`:
+no es una protección antibucle, es una comprobación de viabilidad. Si quien escribió es una
+cabecera alfanumérica (`BANCO`, `AMAZON`), no recibe SMS, así que el reenvío se omite y se
+registra como `ERROR` en lugar de intentarse y reintentarse hasta agotar los intentos.
+
+`NormalizadorTelefono.esDestinoEnviable()` lo decide: exige al menos cuatro dígitos, el mínimo
+de un número corto de servicio.
 
 ### Comparación de números
 
@@ -711,11 +780,22 @@ que migrar y la historia anterior no aportaba información: se colapsó en un es
 
 Los esquemas se exportan a `app/schemas/` y **se versionan**: son la referencia para escribir
 migraciones. Nunca se usa `fallbackToDestructiveMigration()`, porque perdería SMS y reenvíos
-pendientes.
+pendientes; si falta una migración, se prefiere que la aplicación falle de forma ruidosa.
 
-> Mientras no haya una 1.0.0 publicada, el esquema v1 sigue siendo editable y la forma de aplicar
-> un cambio en desarrollo es desinstalar la app o borrar sus datos. A partir de la primera
-> release, cualquier cambio exige subir la versión y escribir su `Migration`.
+Las migraciones se escriben a mano en `data/local/db/Migraciones.kt` y `DatabaseModule` las
+registra con `addMigrations()`.
+
+| Versión | Cambio |
+|---------|--------|
+| 1 | Esquema inicial con las cuatro tablas |
+| 2 | `reglas.ignorar_mayusculas`, añadida con `DEFAULT 0` |
+
+El esquema dejó de ser editable en sitio en cuanto la aplicación se instaló en un teléfono con
+reglas dentro: cambiar una versión sin migrar hace que Room aborte al abrir la base de datos.
+
+Un detalle que se paga caro si se pasa por alto: el valor por defecto del `ALTER TABLE` tiene
+que coincidir con el `defaultValue` declarado en la entidad. Si no coinciden, Room valida el
+esquema después de migrar, encuentra la diferencia y aborta — con la base de datos ya migrada.
 
 ---
 

@@ -32,6 +32,12 @@ import javax.inject.Inject
  * Es la única entrada de mensajes al sistema. Sustituye al `SaveSmsUseCase` de la versión HTTP,
  * que solo guardaba y encolaba porque el destino era siempre el mismo.
  *
+ * ## Destino de un reenvío
+ * Normalmente es el número fijo de la regla. Si la regla declara `{telefono}` como destino, el
+ * reenvío vuelve **al propio remitente**, que es la forma de contestar a quien escribió. Esa
+ * circularidad es intencionada y la protección antibucle no la bloquea; lo que sí se comprueba
+ * es que el remitente sea un número al que se pueda enviar.
+ *
  * ## Orden de las operaciones
  * ```
  * 1. INSERT del SMS en estado PENDIENTE        ← outbox: nada se pierde a partir de aquí
@@ -154,9 +160,14 @@ class ProcesarSmsEntranteUseCase @Inject constructor(
         }
 
         // ── Protección: no reenviar al propio remitente ───────────────────────
+        //
+        // Una regla con `{telefono}` en el destino pide explícitamente contestar a quien
+        // escribió, así que queda fuera de esta protección: lo que se bloquea es la
+        // circularidad accidental, no la que se ha configurado a propósito.
         val (validas, circulares) = if (config.protegerBucles) {
-            resultado.coincidencias.partition {
-                !NormalizadorTelefono.mismoNumero(it.destino, sms.telefono)
+            resultado.coincidencias.partition { coincidencia ->
+                coincidencia.respondeAlRemitente ||
+                    !NormalizadorTelefono.mismoNumero(coincidencia.destino, sms.telefono)
             }
         } else {
             resultado.coincidencias to emptyList()
@@ -169,20 +180,52 @@ class ProcesarSmsEntranteUseCase @Inject constructor(
                     smsId = sms.id,
                     destino = coincidencia.destino,
                     detalle = "Regla «${coincidencia.nombreRegla}» reenviaría al propio " +
-                        "remitente ${sms.telefono}: omitida",
+                        "remitente ${sms.telefono}: omitida. Si la intención era contestarle, " +
+                        "pon {telefono} como destino de la regla",
                     timestamp = Instant.now()
                 )
             )
         }
 
-        if (validas.isEmpty()) {
-            descartar(sms, "todas las reglas que casaron reenviaban al propio remitente")
+        // ── Protección: el remitente no es un número al que se pueda enviar ───
+        //
+        // Solo afecta a las reglas que contestan al remitente. Una cabecera alfanumérica
+        // (BANCO, AMAZON) no recibe SMS, así que el envío fallaría siempre y con reintentos
+        // detrás: mejor decirlo aquí.
+        val (enviables, inalcanzables) = validas.partition { coincidencia ->
+            !coincidencia.respondeAlRemitente ||
+                NormalizadorTelefono.esDestinoEnviable(coincidencia.destino)
+        }
+
+        inalcanzables.forEach { coincidencia ->
+            logRepository.insertar(
+                LogEntry(
+                    tipo = LogTipo.ERROR,
+                    smsId = sms.id,
+                    destino = coincidencia.destino,
+                    detalle = "Regla «${coincidencia.nombreRegla}» contesta al remitente, pero " +
+                        "«${sms.telefono}» no es un número al que se pueda enviar un SMS: omitida",
+                    timestamp = Instant.now()
+                )
+            )
+        }
+
+        if (enviables.isEmpty()) {
+            descartar(
+                sms,
+                if (circulares.isNotEmpty()) {
+                    "todas las reglas que casaron reenviaban al propio remitente"
+                } else {
+                    "las reglas que casaron contestaban a «${sms.telefono}», " +
+                        "que no es un número al que se pueda enviar"
+                }
+            )
             return
         }
 
         // ── Creación de los reenvíos ──────────────────────────────────────────
         val ahora = Instant.now()
-        val reenvios = validas.map { coincidencia ->
+        val reenvios = enviables.map { coincidencia ->
             Reenvio(
                 id = UUID.randomUUID().toString(),
                 smsId = sms.id,

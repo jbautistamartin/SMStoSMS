@@ -27,7 +27,22 @@ data class ReglasExportadas(
     @SerialName("reglas") val reglas: List<ReglaJson>
 ) {
     companion object {
-        const val VERSION_ACTUAL = 1
+        /**
+         * Versión del formato.
+         *
+         * | Versión | Cambio                                  |
+         * |---------|-----------------------------------------|
+         * | 1       | Formato inicial.                        |
+         * | 2       | La regla gana `ignorar_mayusculas`.     |
+         *
+         * Subir la versión al añadir un campo opcional puede parecer excesivo, porque un
+         * fichero de la 1 se sigue importando sin problema. Lo que evita es el caso contrario:
+         * una versión antigua de la aplicación leyendo un fichero de la 2 descartaría
+         * `ignorar_mayusculas` en silencio —`ignoreUnknownKeys` está activado— y la regla
+         * entraría distinguiendo mayúsculas sin avisar. Con la versión por delante, esa
+         * importación se rechaza con un mensaje que explica lo que pasa.
+         */
+        const val VERSION_ACTUAL = 2
     }
 }
 
@@ -37,6 +52,7 @@ data class ReglaJson(
     @SerialName("nombre") val nombre: String,
     @SerialName("regex_telefono") val regexTelefono: String? = null,
     @SerialName("regex_mensaje") val regexMensaje: String? = null,
+    @SerialName("ignorar_mayusculas") val ignorarMayusculas: Boolean = false,
     @SerialName("destino") val destino: String,
     @SerialName("plantilla") val plantilla: String = Regla.PLANTILLA_POR_DEFECTO,
     @SerialName("activa") val activa: Boolean = true,
@@ -48,6 +64,7 @@ fun Regla.aJson() = ReglaJson(
     nombre = nombre,
     regexTelefono = regexTelefono,
     regexMensaje = regexMensaje,
+    ignorarMayusculas = ignorarMayusculas,
     destino = destino,
     plantilla = plantilla,
     activa = activa,
@@ -66,6 +83,7 @@ fun ReglaJson.aDominio(orden: Int) = Regla(
     nombre = nombre,
     regexTelefono = regexTelefono?.takeIf { it.isNotBlank() },
     regexMensaje = regexMensaje?.takeIf { it.isNotBlank() },
+    ignorarMayusculas = ignorarMayusculas,
     destino = destino,
     plantilla = plantilla.ifBlank { Regla.PLANTILLA_POR_DEFECTO },
     activa = activa,

@@ -7,6 +7,7 @@ package com.capicua.smstosms.di
 
 import android.content.Context
 import androidx.room.Room
+import com.capicua.smstosms.data.local.db.Migraciones
 import com.capicua.smstosms.data.local.db.SmsDatabase
 import com.capicua.smstosms.data.local.db.dao.LogDao
 import com.capicua.smstosms.data.local.db.dao.ReenvioDao
@@ -31,7 +32,9 @@ object DatabaseModule {
             SmsDatabase::class.java,
             SmsDatabase.NOMBRE_BD
         )
-            // El esquema arranca en v1 sin migraciones previas: ver KDoc de SmsDatabase.
+            // Sin fallbackToDestructiveMigration: si falta una migración queremos que falle
+            // de forma ruidosa, no que borre los SMS y reenvíos pendientes.
+            .addMigrations(*Migraciones.TODAS)
             .enableMultiInstanceInvalidation()
             // WAL mode: mayor rendimiento de escritura concurrente y lecturas no bloqueantes
             .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)

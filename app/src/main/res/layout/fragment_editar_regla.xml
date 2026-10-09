@@ -12,12 +12,38 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:id="@+id/text_view_titulo"
+        <!-- Cabecera: el botón de volver es la salida explícita de esta pantalla, que no
+             está en la barra inferior. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-            android:layout_marginBottom="20dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="20dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_volver"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="-8dp"
+                android:layout_marginEnd="4dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="@string/volver"
+                app:icon="@drawable/ic_arrow_back"
+                app:iconSize="24dp"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
+
+            <TextView
+                android:id="@+id/text_view_titulo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall" />
+
+        </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/til_nombre"
@@ -90,6 +116,51 @@
                 android:singleLine="true" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- El ajuste va aquí y no en «Comportamiento»: cambia cómo se aplican las dos
+             expresiones de arriba, no lo que la regla hace al casar. -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/regla_ignorar_mayusculas"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/regla_ignorar_mayusculas_ayuda"
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_ignorar_mayusculas"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- ── Reenvío ─────────────────────────────────────────────────────── -->
         <TextView
             android:layout_width="match_parent"
@@ -104,19 +175,32 @@
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="4dp"
             android:hint="@string/regla_destino"
             app:helperText="@string/regla_destino_ayuda"
             app:startIconDrawable="@android:drawable/ic_menu_call">
 
+            <!-- inputType=text, no phone: el destino también admite el marcador {telefono},
+                 y el teclado numérico no tiene llaves. -->
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/edit_text_destino"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="phone"
+                android:inputType="textNoSuggestions"
                 android:imeOptions="actionNext"
                 android:singleLine="true" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Atajo para el caso «contesta a quien me escribió»: teclear {telefono} a mano exige
+             saber que el marcador existe. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_destino_remitente"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="-8dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/regla_destino_remitente" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/til_plantilla"

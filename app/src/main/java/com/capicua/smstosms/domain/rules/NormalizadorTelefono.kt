@@ -56,6 +56,23 @@ object NormalizadorTelefono {
         return claveA.isNotEmpty() && claveA == claveB
     }
 
+    /**
+     * Dígitos mínimos para que un valor pueda ser un destino al que enviar. Un número corto de
+     * servicio tiene cuatro, así que se exige poco a propósito: validar de más impediría usar
+     * números especiales.
+     */
+    const val DIGITOS_MINIMOS_DESTINO = 4
+
+    /**
+     * true si a [numero] se le puede enviar un SMS.
+     *
+     * Importa con las reglas que responden al remitente: si quien escribió es una cabecera
+     * alfanumérica (`BANCO`, `AMAZON`), devolverle el mensaje es imposible y hay que decirlo
+     * en lugar de intentar un envío que siempre va a fallar.
+     */
+    fun esDestinoEnviable(numero: String?): Boolean =
+        soloDigitos(numero).length >= DIGITOS_MINIMOS_DESTINO
+
     /** true si [numero] coincide con alguno de [candidatos]. */
     fun estaEnLista(numero: String?, candidatos: Collection<String>): Boolean =
         candidatos.any { mismoNumero(numero, it) }

@@ -12,6 +12,7 @@ import com.capicua.smstosms.data.repository.ReglaRepository
 import com.capicua.smstosms.data.sms.ResultadoEnvio
 import com.capicua.smstosms.data.sms.SmsSender
 import com.capicua.smstosms.domain.rules.EvaluadorDeReglas
+import com.capicua.smstosms.domain.rules.NormalizadorTelefono
 import com.capicua.smstosms.domain.rules.ResultadoEvaluacion
 import com.capicua.smstosms.util.toDisplayString
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -155,6 +156,26 @@ class ProbarReglasViewModel @Inject constructor(
                     "«$telefono» no tiene dígitos suficientes para ser un número: se tratará " +
                         "como remitente alfanumérico, igual que BANCO o AMAZON"
                 )
+            }
+
+            // Las reglas que contestan al remitente quedan exentas de la protección antibucle,
+            // y eso hay que decirlo donde se está comprobando la regla, no solo en la ayuda.
+            val contestanAlRemitente = resultado.coincidencias.filter { it.respondeAlRemitente }
+            if (contestanAlRemitente.isNotEmpty()) {
+                val nombres = contestanAlRemitente.joinToString(", ") { "«${it.nombreRegla}»" }
+                if (NormalizadorTelefono.esDestinoEnviable(telefono)) {
+                    add(
+                        "$nombres contesta al propio remitente ($telefono). La protección " +
+                            "antibucle no la bloquea porque es intencionada: el límite de " +
+                            "reenvíos por minuto es la única red si el otro extremo también " +
+                            "responde automáticamente"
+                    )
+                } else {
+                    add(
+                        "$nombres contesta al remitente, pero a «$telefono» no se le puede " +
+                            "enviar un SMS: ese reenvío se omitirá"
+                    )
+                }
             }
             if (!smsSender.tienePermisoEnviar()) {
                 add("Falta el permiso de envío de SMS: la prueba real no funcionará")

@@ -36,9 +36,15 @@ import com.capicua.smstosms.data.local.db.entity.SmsEntity
  *
  * ## Migraciones
  * Nunca usar `fallbackToDestructiveMigration()`: perderíamos SMS y reenvíos pendientes.
- * Mientras no haya una 1.0.0 publicada, el esquema v1 sigue siendo editable y la forma de
- * aplicar un cambio en desarrollo es desinstalar la app o borrar sus datos. A partir de la
- * primera release, cualquier cambio exige subir la versión y escribir su `Migration`.
+ *
+ * El esquema dejó de ser editable en sitio en cuanto la aplicación se instaló en un teléfono
+ * con reglas dentro: cambiar v1 sin migrar hace que Room aborte al abrir la base de datos.
+ * Desde entonces, cualquier cambio sube la versión y escribe su `Migration` en [Migraciones].
+ *
+ * | Versión | Cambio                                        |
+ * |---------|-----------------------------------------------|
+ * | 1       | Esquema inicial con las cuatro tablas.        |
+ * | 2       | `reglas.ignorar_mayusculas`.                  |
  */
 @Database(
     entities = [
@@ -47,7 +53,7 @@ import com.capicua.smstosms.data.local.db.entity.SmsEntity
         ReenvioEntity::class,
         LogEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class SmsDatabase : RoomDatabase() {
