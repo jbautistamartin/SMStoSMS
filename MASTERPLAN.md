@@ -106,9 +106,6 @@ fuera de `.git`.
 - `assembleDebug` → **BUILD SUCCESSFUL**. Manifest fusionado verificado:
   `package="com.capicua.smstosms.debug"`, `SmsToSmsApplication`, authority
   `com.capicua.smstosms.provider`.
-- Grep limpio en todo el repositorio. Las dos únicas ocurrencias restantes están en
-  `.claude/settings.local.json` (historial local de permisos, no versionado) y apuntan a otro
-  proyecto distinto: `com.bansi.smsgateway` en `/c/Bansi/sms`. No se tocan.
 - Los 44 ficheros se movieron con `git mv`, así que Git los registra como *rename* y la historia
   se sigue hasta el commit inicial.
 
