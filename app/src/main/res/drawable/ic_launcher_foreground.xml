@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Primer plano del icono adaptativo: un bocadillo de mensaje con una flecha de reenvío.
+
+    Dice lo que hace la aplicación —un SMS que sale hacia otro sitio— y no se parece a la
+    mancha blanca que usaba SMSGateway.
+
+    La flecha es un **hueco**, no una figura blanca encima: ambas subrutas van en el mismo
+    `pathData` con `fillType="evenOdd"`, de modo que por la flecha se ve el fondo. Hacerlo así
+    evita tener que repetir el color del fondo aquí, que con un degradado no encajaría.
+
+    Todo el dibujo cabe en los 72 dp centrales del lienzo de 108, que es la zona que ninguna
+    máscara del lanzador recorta.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,30 C44,30 36,38 36,48 C36,55 40,61 46,64 L46,78 L62,78 L62,64 C68,61 72,55 72,48 C72,38 64,30 54,30Z
-                          M50,70 L50,78 L58,78 L58,70Z" />
+
+    <!--
+        El dibujo se reduce al 85 % sobre el centro. A tamaño completo el bocadillo casi tocaba
+        el borde de la máscara —la punta quedaba a 6 dp— y el icono se veía apretado al lado de
+        los demás del lanzador. Escalar con un grupo, en vez de reescribir las coordenadas, deja
+        la ruta legible y comparable con la de la capa monocroma, que lleva exactamente la misma.
+    -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.85"
+        android:scaleY="0.85">
+
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M38,26 L70,26 A12,12 0 0 1 82,38 L82,58 A12,12 0 0 1 70,70 L52,70 L38,84 L38,70 A12,12 0 0 1 26,58 L26,38 A12,12 0 0 1 38,26 Z
+                              M36,44 L54,44 L54,36 L72,48 L54,60 L54,52 L36,52 Z" />
+    </group>
+
+
 </vector>

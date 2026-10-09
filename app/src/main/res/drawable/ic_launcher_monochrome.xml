@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Capa monocroma para los iconos temáticos de Android 13+.
+
+    Es la misma silueta que el primer plano, en negro sobre transparente: el sistema la recolorea
+    con el tema del usuario. Sin esta capa, el lanzador deja el icono fuera del tratamiento
+    temático y queda como el único que no sigue al resto.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+        El dibujo se reduce al 85 % sobre el centro. A tamaño completo el bocadillo casi tocaba
+        el borde de la máscara —la punta quedaba a 6 dp— y el icono se veía apretado al lado de
+        los demás del lanzador. Escalar con un grupo, en vez de reescribir las coordenadas, deja
+        la ruta legible y comparable con la de la capa monocroma, que lleva exactamente la misma.
+    -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.85"
+        android:scaleY="0.85">
+
+        <path
+            android:fillColor="#000000"
+            android:fillType="evenOdd"
+            android:pathData="M38,26 L70,26 A12,12 0 0 1 82,38 L82,58 A12,12 0 0 1 70,70 L52,70 L38,84 L38,70 A12,12 0 0 1 26,58 L26,38 A12,12 0 0 1 38,26 Z
+                              M36,44 L54,44 L54,36 L72,48 L54,60 L54,52 L36,52 Z" />
+    </group>
+
+
+</vector>

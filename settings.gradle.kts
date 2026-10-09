@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SmsGateway"
+rootProject.name = "SMStoSMS"
 include(":app")
