@@ -3,6 +3,21 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/);
 versionado según [SemVer](https://semver.org/lang/es/).
 
+## [No publicado]
+
+### Cambiado
+
+- **Orden común en «Configuración».** Las cuatro aplicaciones de la familia presentan ahora las
+  secciones en el mismo orden: **Recepción de SMS**, **Fiabilidad en segundo plano**, la sección
+  propia del destino, **Límites**, **Envío y reintentos** y **Copia de seguridad**. Quien salta de
+  una a otra encuentra lo mismo en el mismo sitio.
+
+- **La SIM de envío pasa a ser la tercera sección**, donde las otras tres aplicaciones ponen su
+  destino; antes iba entre los reintentos y la copia de seguridad. Sigue apareciendo solo en
+  teléfonos con más de una tarjeta.
+
+- **«Protecciones» se llama ahora «Límites»**, como en SMStoTelegram y SMStoWhats.
+
 ## [1.2.0] - 2026-10-11
 
 ### Añadido

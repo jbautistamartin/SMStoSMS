@@ -3,11 +3,15 @@
     Fondo del icono adaptativo.
 
     Verde azulado, el color primario de la aplicación (`md_theme_primary`), en lugar del azul
-    #1565C0 que venía de SMSGateway: las dos aplicaciones pueden convivir en el mismo teléfono
-    y tienen que distinguirse de un vistazo en el lanzador.
+    #1565C0 que venía de SMSGateway: las aplicaciones de esta familia pueden convivir en el mismo
+    teléfono y tienen que distinguirse de un vistazo en el lanzador. Cada una tiene su color y el
+    color dice a dónde entrega: aquí verde azulado porque sale como otro SMS, azul en
+    SMStoTelegram, verde en SMStoWhats, y violeta en SMSGateway, que entrega a una API y por eso
+    no le toca ninguno de los tres (aquel azul #1565C0 ya no existe en ningún sitio).
 
     El degradado es sutil a propósito. A 48 dp no se percibe como degradado, solo evita que el
-    icono se vea plano junto a los demás.
+    icono se vea plano junto a los demás. Los dos extremos se derivan del primario, uno aclarado
+    y otro oscurecido alrededor de él, con el mismo reparto en las cuatro aplicaciones.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"

@@ -55,7 +55,7 @@
     <string name="settings_autoinicio_abrir">Abrir inicio automático</string>
     <string name="settings_autoinicio_sin_pantalla">Este teléfono no permite abrir esa pantalla desde la app. Búscala en Ajustes → Aplicaciones → SMStoSMS → Inicio automático.</string>
 
-    <string name="settings_seccion_protecciones">Protecciones</string>
+    <string name="settings_seccion_protecciones">Límites</string>
     <string name="settings_proteger_bucles">Evitar bucles de reenvío</string>
     <string name="settings_proteger_bucles_detalle">Descarta los SMS cuyo remitente sea un destino configurado y los reenvíos dirigidos al propio remitente. Desactívalo solo en pruebas controladas.</string>
     <string name="settings_max_reenvios">Máximo de reenvíos por minuto</string>
