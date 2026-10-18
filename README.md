@@ -144,11 +144,11 @@ Por ADB, `adb install smstosms-1.3.0.apk`.
 # Si el JDK del PATH es más nuevo que el 21
 export JAVA_HOME="/ruta/al/jdk-21"
 
-# Build debug
+# Compilación debug
 ./gradlew assembleDebug
 # APK → app/build/outputs/apk/debug/app-debug.apk
 
-# Build release (requiere claves de firma en local.properties; ver CLAUDE.md)
+# Compilación release (requiere claves de firma en local.properties; ver CLAUDE.md)
 ./gradlew assembleRelease
 # APK → app/build/outputs/apk/release/smstosms-<versionName>.apk
 ```
