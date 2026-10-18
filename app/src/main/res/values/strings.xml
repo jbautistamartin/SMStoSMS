@@ -23,6 +23,8 @@
 
     <!-- Logs -->
     <string name="logs_title">Logs del sistema</string>
+    <string name="logs_copiado">Entrada copiada al portapapeles</string>
+    <string name="logs_copiado_etiqueta">Registro de SMStoSMS</string>
     <string name="logs_no_entries">Sin entradas de log</string>
     <string name="logs_limpiar">Limpiar</string>
     <string name="logs_filtro_reglas">Reglas</string>
@@ -55,7 +57,7 @@
     <string name="settings_autoinicio_abrir">Abrir inicio automático</string>
     <string name="settings_autoinicio_sin_pantalla">Este teléfono no permite abrir esa pantalla desde la app. Búscala en Ajustes → Aplicaciones → SMStoSMS → Inicio automático.</string>
 
-    <string name="settings_seccion_protecciones">Protecciones</string>
+    <string name="settings_seccion_protecciones">Límites</string>
     <string name="settings_proteger_bucles">Evitar bucles de reenvío</string>
     <string name="settings_proteger_bucles_detalle">Descarta los SMS cuyo remitente sea un destino configurado y los reenvíos dirigidos al propio remitente. Desactívalo solo en pruebas controladas.</string>
     <string name="settings_max_reenvios">Máximo de reenvíos por minuto</string>
