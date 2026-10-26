@@ -100,6 +100,9 @@
     <string name="about_empresa">Capicua</string>
     <string name="about_autor">José Luis Bautista Martín</string>
     <string name="about_descripcion">Recibe SMS en este dispositivo y los reenvía automáticamente a otro número de teléfono, según reglas con expresiones regulares sobre el remitente y el texto.</string>
+    <string name="about_descontinuada_titulo">Esta aplicación está descontinuada</string>
+    <string name="about_descontinuada_detalle">SMStoSMS no tendrá más versiones. Sigue en SMSRelay, que hace lo mismo y además reenvía por WhatsApp, Telegram, SMS o una API REST, cada regla por el canal que elija.\n\nPara pasarte: exporta la copia de seguridad en Ajustes, instala SMSRelay e impórtala allí; tus reglas entran solas. Después apaga la recepción aquí: con las dos activas, cada SMS saldría dos veces.</string>
+    <string name="about_descontinuada_boton">Descargar SMSRelay</string>
     <string name="about_marcadores_titulo">Marcadores de la plantilla de reenvío</string>
     <string name="about_marcadores_detalle">{mensaje}   → texto del SMS (obligatorio)\n{telefono}  → número del remitente\n{fecha}     → timestamp ISO-8601 UTC</string>
     <string name="about_privacidad_titulo">Aviso de privacidad</string>
