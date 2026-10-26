@@ -1,5 +1,10 @@
 # SMStoSMS
 
+> **⚠ SMStoSMS está descontinuada.** La 1.4.0 es su última versión. La aplicación sigue en
+> **[SMSRelay](https://github.com/jbautistamartin/SMSRelay)**, que junta las cuatro de la familia y
+> reenvía por WhatsApp, Telegram, SMS o una API REST, eligiendo el canal en cada regla. SMSRelay
+> importa la copia de seguridad de SMStoSMS tal cual.
+
 [![Última versión](https://img.shields.io/github/v/release/jbautistamartin/SMStoSMS?label=descargar&color=2E7D32)](https://github.com/jbautistamartin/SMStoSMS/releases/latest)
 [![Licencia](https://img.shields.io/badge/licencia-LGPL--2.1-blue)](LICENSE)
 [![Donar con PayPal](https://img.shields.io/badge/Donar-PayPal-00457C?logo=paypal&logoColor=white)](https://paypal.me/jbautistamartin)
@@ -84,7 +89,8 @@ SIM → SmsReceiver → SmsIngestionService → Room (outbox)
 ```
 
 Consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para la documentación técnica completa
-y [`MASTERPLAN.md`](MASTERPLAN.md) para la historia de la migración desde SMSGateway.
+[`MASTERPLAN-SMS.md`](MASTERPLAN-SMS.md) para la historia de la migración desde SMSGateway y
+[`MASTERPLAN-GATEWAY.md`](MASTERPLAN-GATEWAY.md) para el origen de la tubería.
 
 ---
 
@@ -92,16 +98,16 @@ y [`MASTERPLAN.md`](MASTERPLAN.md) para la historia de la migración desde SMSGa
 
 | Categoría | Tecnología |
 |-----------|-----------|
-| Lenguaje | Kotlin 2.0.21 |
+| Lenguaje | Kotlin 2.4.21 |
 | SDK mínimo | Android 8.0 (API 26) |
 | SDK objetivo | Android 15 (API 35) |
-| Inyección de dependencias | Hilt 2.52 |
-| Base de datos local | Room 2.6.1 + WAL mode |
-| Tareas en background | WorkManager 2.9.1 |
+| Inyección de dependencias | Hilt 2.60.1 |
+| Base de datos local | Room 2.8.5 + WAL mode |
+| Tareas en background | WorkManager 2.12.0 |
 | Envío de SMS | `android.telephony.SmsManager` |
-| Configuración | DataStore Preferences 1.1.1 |
-| Serialización | kotlinx.serialization 1.7.3 |
-| Concurrencia | Coroutines + Flow 1.9.0 |
+| Configuración | DataStore Preferences 1.3.0 |
+| Serialización | kotlinx.serialization 1.12.0 |
+| Concurrencia | Coroutines + Flow 1.11.0 |
 | UI | Material Design 3 + Navigation Component |
 
 No hay ninguna dependencia de red: la aplicación no necesita internet y no declara el permiso.
@@ -110,9 +116,9 @@ No hay ninguna dependencia de red: la aplicación no necesita internet y no decl
 
 ## Requisitos
 
-- Android Studio Ladybug (2024.2.1) o superior
-- **JDK 17 o 21** — AGP 8.5.2 no admite JDK 25
-- Android SDK con API 35
+- Android Studio compatible con AGP 9.4 (2026.2.1 o superior)
+- **JDK 25** (Temurin 25) — `gradle/gradle-daemon-jvm.properties` lo exige
+- Android SDK con la plataforma 37
 - Dispositivo Android 8.0+ con SIM activa y saldo o tarifa de SMS
 
 ---
@@ -141,8 +147,8 @@ Por ADB, `adb install smstosms-1.3.0.apk`.
 ### 1. Compilar
 
 ```bash
-# Si el JDK del PATH es más nuevo que el 21
-export JAVA_HOME="/ruta/al/jdk-21"
+# Gradle exige el JDK 25; si JAVA_HOME apunta a otro
+export JAVA_HOME="/ruta/al/jdk-25"
 
 # Compilación debug
 ./gradlew assembleDebug

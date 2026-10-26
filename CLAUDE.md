@@ -6,10 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > del código. La línea de arriba se conserva en inglés porque es la cabecera estándar que
 > identifica el fichero.
 
+## Descontinuada
+
+**La 1.4.0 (25 oct 2026) es la última versión.** SMStoSMS sigue en SMSRelay (decisión D de su `MASTERPLAN-RELAY.md`): la tarjeta «Esta aplicación está descontinuada», la primera de «Acerca de», lo dice y enlaza la descarga. Un arreglo de la tubería común ya no tiene que llegar aquí; solo queda archivar el repositorio.
+
 ## Comandos de compilación y ejecución
 
-> **Toolchain:** el proyecto apunta a JVM 17 y se compila con AGP 8.5.2. Si el JDK del `PATH` es
-> más nuevo que el 21, apunta `JAVA_HOME` a un JDK 17 o 21 — AGP 8.5.2 no soporta JDK 25.
+> **Toolchain:** el código se compila para JVM 17 con AGP 9.4.1 sobre Gradle 9.8.2, y Gradle se
+> ejecuta con **Temurin 25**: `gradle/gradle-daemon-jvm.properties` lo exige, así que vale el JDK
+> de `JAVA_HOME` o el que elija Android Studio, siempre que sea el 25. Hace falta el SDK con la
+> **plataforma 37** (`compileSdk 37`: `core-ktx` 1.19 no compila contra una inferior).
 > `local.properties` no se versiona; si falta, define `ANDROID_HOME` en su lugar.
 
 ```bash
@@ -514,15 +520,21 @@ el fabricante; usa la que más se parezca:
   de la Bottom Navigation, lo que hacía imposible salir de las pantallas que no están en esa barra.
   `ProbarReglasFragment` y `EditarReglaFragment` llevan además su propio botón de atrás, ya que
   ninguno tiene entrada en la barra inferior.
-- **Asunto conocido del toolchain:** el wrapper es Gradle 9.3.0 mientras que AGP es 8.5.2. Compila,
-  pero avisa de APIs que desaparecen en Gradle 10 — entre ellas `android.applicationVariants.all`,
-  el bloque que renombra el APK de release. Antes de pasar a Gradle 10, o subes AGP o fijas el
-  wrapper a Gradle 8.x. Hoy no hay nada roto, así que se ha dejado estar a propósito.
+- **AGP 9 cambió tres cosas del build, y las tres se ven en `app/build.gradle.kts`.** Kotlin va
+  integrado en AGP: no hay plugin `kotlin-android`, la versión de Kotlin la fija el plugin de
+  serialización declarado en el `build.gradle.kts` raíz, y `kotlinOptions` es ahora
+  `kotlin { compilerOptions { … } }`. La API de variantes antigua desapareció, así que el
+  renombrado del APK de release pasa por `androidComponents.onVariants` y `VariantOutputImpl`, que
+  es interna: si una versión futura de AGP la cambia, el APK vuelve a llamarse
+  `app-release.apk`. Y R8 aplica el modo completo estricto: un `-keep class X` ya no conserva el
+  constructor, así que las reglas de `proguard-rules.pro` lo piden con `{ <init>(); }`.
 - **`INTERNET` vuelve a estar declarado**, solo para la comprobación de versión (ver «Acerca de»,
   más arriba). Si esa funcionalidad desapareciera alguna vez, el permiso se va con ella: que esta
   app no necesite red es parte de lo que es.
 - Tres conjuntos de tests unitarios cubren lo que merece cubrirse, todos en Kotlin puro y sin
   dependencias de Android: `EvaluadorDeReglasTest` (45), `NormalizadorTelefonoTest` (18) y
   `ReglasJsonTest` (10). El placeholder `SmsRepositoryTest`, que nunca compiló, ya no está.
-- `MASTERPLAN.md` recoge la migración desde SMSGateway fase a fase, con las decisiones tomadas y
-  las desviaciones respecto al plan original. Léelo antes de cambiar nada estructural.
+- `MASTERPLAN-SMS.md` recoge la migración desde SMSGateway fase a fase, con las decisiones tomadas y
+  las desviaciones respecto al plan original. `MASTERPLAN-GATEWAY.md` cuenta el origen de la tubería
+  en SMSGateway; se escribió a posteriori (25 oct 2026) para que las cuatro aplicaciones tengan la
+  misma estructura de planes. Léelos antes de cambiar nada estructural.
